@@ -1,14 +1,14 @@
 dazhongdianping:
-  shop_id: G2v6oAbjSt8Ro3Pp # 店铺id，根据链接店铺链接可确定
-  base_url: https://www.dianping.com/shop/{}/review_all/p{}?queryType=isPic&queryVal=true  # question 这个后缀的 Query 参数我不确定是干什么用的
-  page_start: 1 # 评论的起始页
-  page_end: 1 # 评论的终止页
+  shop_id: k4qnmVPos1BKTKXW # 店铺id，根据链接店铺链接可确定
+  base_url: https://www.dianping.com/shop/{}/review_all/p{}  # question 这个后缀的 Query 参数我不确定是干什么用的 # ?queryType=isPic&queryVal=true
+  page_start: 2 # 评论的起始页
+  page_end: 2 # 评论的终止页
   save_dir: result # 爬取结果保存的地址
   crawl_delay: 1 # 网页爬取的中间间隔
   download_delay: 0.1 # 图片下载的间隔
   set_logfile: True # 是否保存log文件
   headers:  # 需要更新到header的信息
-    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; fspop=test; s_ViewType=10; cy=16; cye=wuhan; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1721119008,1721580654; HMACCOUNT=882C038ECD1DDD51; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; qruuid=98837a01-3ec9-4b8a-8eb1-f31d397061c7; dplet=927089797f65d010228006603492a513; dper=0202e3236b7cb0d5a359f4ae51a7de49e2763829274e65b91aa2009ca2c1f2a8403510d7b9350670de0e8ceba79840eb39d2f15caa5423dab5dc00000000a82100003b20b65cb0cffce0b1570fbf5ef5565bb6a8e8a0c071db61f1ccef3a0d09882628969012560f18dcae6604b1037285d7; ll=7fd06e815b796be3df069dec7836c3df; ua=dpuser_0915129033; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1721588195; _lxsdk_s=190d6340d1d-a34-58e-717%7C%7C916
+    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; fspop=test; s_ViewType=10; cy=16; cye=wuhan; dplet=927089797f65d010228006603492a513; dper=0202e3236b7cb0d5a359f4ae51a7de49e2763829274e65b91aa2009ca2c1f2a8403510d7b9350670de0e8ceba79840eb39d2f15caa5423dab5dc00000000a82100003b20b65cb0cffce0b1570fbf5ef5565bb6a8e8a0c071db61f1ccef3a0d09882628969012560f18dcae6604b1037285d7; ua=dpuser_0915129033; ll=7fd06e815b796be3df069dec7836c3df; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1721119008,1721580654,1721611146,1721645911; HMACCOUNT=882C038ECD1DDD51; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; qruuid=96589aa0-1aac-42e5-bdd4-631359bf42c2; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1721673573; _lxsdk_s=190dbbda401-dea-34b-19%7C%7C176
     # 替换成自己的cookie
     Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
     Accept-Encodin: gzip, deflate, br, zstd
@@ -18,3 +18,8 @@ dazhongdianping:
   - http|120.194.4.157:5443 # 可去在右边网站获取 https://cn.proxy-tools.com/proxy/cn
   - http|43.154.96.33:80
   - http|218.75.102.198:8000
+
+MongoDB:  # MongoDB 基本控制
+  host: 'localhost'
+  port: 27017
+  db_name: 'CFT-DATA-DianPing'

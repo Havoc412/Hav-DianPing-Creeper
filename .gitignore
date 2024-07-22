@@ -1,5 +1,7 @@
 <<<<<<< HEAD
 result/*
+BeautifulSoup-test/*
+
 __pycache__/
 *.pyc
 .vscode/
@@ -167,3 +169,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 >>>>>>> fec0968ea51d61c50561b32697ec194941971f35
+!/BeautifulSoup-test/
+!/BeautifulSoup-test/
+!/BeautifulSoup-test/

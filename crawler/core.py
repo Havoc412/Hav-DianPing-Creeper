@@ -8,8 +8,11 @@ import requests
 import logging
 import random
 from bs4 import BeautifulSoup
-from crawler.utils.yaml_utils import load_yaml
 
+
+from crawler.utils.yaml_utils import load_yaml
+from crawler.models.comment import Comment
+from crawler.MongoDB.Mongo import Mongo
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +55,7 @@ class application():
     def __init__(self, config_file, application):
         self.crawler = Crawl()
         self.config = load_yaml(config_file)[application]
+        self.shop_id = self.config["shop_id"]  # shop_id !!
         self.base_url = self.config["base_url"]
         # 爬取的图片保存地址
         self.save_dir = self.config["save_dir"]
@@ -120,7 +124,7 @@ class application():
         # 读取店铺名
         shop_name = bs.find("h1", class_="shop-name").string.strip()
         if len(shop_name) == 0:
-            raise Exception("店铺名称为空！")
+            raise Exception("店铺名称为空！")  # 通过检查 Shop Name 的方式，来确保获取的 html 可用。
         return shop_name
 
     def check_login(self, html):
@@ -146,37 +150,54 @@ class application():
             print(f"IP代理{proxy[0]}://{proxy[1]}无效！")
             return False
 
+    def read_html_from_file(self, file_path):
+        """读取本地 HTML 文件内容"""
+        with open(file_path, 'r', encoding='utf-8') as file:
+            html_content = file.read()
+        return html_content
+
     def crawl(self):  # 启动入口
         # 下载html
         for i, url in enumerate(self.urls):
-            self.headers["User-Agent"] = random.choice(self.user_agent)
-            # check ip proxy: ip will be useless any time
-            self.filter_proxy()
-            # 链接网址
-            resp = self.crawler.request(url=url, proxy_list=self.proxy_list, headers=self.headers)
-            if resp.code == 200:
-                print(f">>> 链接{url}成功响应!")
-                logger.info(f">>> 链接{url}成功响应!")
-            else:
-                print(f">>> 链接{url}响应失败:{resp.code}")
-                logger.info(f">>> 链接{url}响应失败:{resp.code}")
-            html = resp.read()
-            html = gzip.decompress(html).decode("utf-8")
-            # 保存html
-            self.check_login(html)  # check usable
-            shop_name = self.get_title(html)
-            dir_path = os.path.join(self.save_dir, f"{shop_name}")
-            if not os.path.exists(dir_path):
-                os.makedirs(dir_path)
+            # self.headers["User-Agent"] = random.choice(self.user_agent)
+            # # check ip proxy: ip will be useless any time
+            # self.filter_proxy()
+            # # 链接网址
+            # resp = self.crawler.request(url=url, proxy_list=self.proxy_list, headers=self.headers)
+            # if resp.code == 200:
+            #     print(f">>> 链接{url}成功响应!")
+            #     logger.info(f">>> 链接{url}成功响应!")
+            # else:
+            #     print(f">>> 链接{url}响应失败:{resp.code}")
+            #     logger.info(f">>> 链接{url}响应失败:{resp.code}")
+            # html = resp.read()
+            # html = gzip.decompress(html).decode("utf-8")
+            # # 保存html
+            # self.check_login(html)  # check usable
+            # shop_name = self.get_title(html)
+            # dir_path = os.path.join(self.save_dir, f"{shop_name}")
+            # if not os.path.exists(dir_path):
+            #     os.makedirs(dir_path)
+
+            # LOCAL TEST
+            dir_path = os.path.join(self.save_dir, f"{self.shop_id}")  #
             page_num = range(self.page_start, self.page_end+1)[i]
             path = os.path.join(dir_path, f"comment-page-{page_num}.html")
-            self.crawler.write_txt(path, html)
-            resp.close()
+            html = self.read_html_from_file(path)  #
+            self.check_login(html)  # check usable
+            shop_name = self.get_title(html)
+
+            print(path, shop_name)  # test for html reader
+
+            # self.crawler.write_txt(path, html)
+            # resp.close()
             # 下载 图片
             pic_dir = os.path.join(dir_path, f"comment-pic")
             if not os.path.exists(pic_dir):
                 os.makedirs(pic_dir, exist_ok=True)
-            self.download_pic(html, pic_dir, page_num, self.proxy_list)
+            # self.download_pic(html, pic_dir, page_num, self.proxy_list)
+
+            self.get_comments(html, pic_dir)
             time.sleep(self.crawl_delay)
         print(f">>> 所有图片已完成下载，请查看:\n{pic_dir}")
         logger.info(f">>> 所有图片已完成下载，请查看:\n{pic_dir}")
@@ -207,3 +228,77 @@ class application():
                 opener = urllib.request.build_opener(handle)
                 urllib.request.install_opener(opener=opener)
             urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
+
+    def download_pic_each(self, pic_div, pic_dir, user_id, proxy_list):
+        def is_img_and_has_data_big(tag):
+            return tag.has_attr("data-big")  # 通过 tag 来获取指定元素，然后通过 IP 代理来获取图片。
+
+        items = pic_div.find_all(is_img_and_has_data_big)
+        for i, item in enumerate(items):
+            img_link = item.attrs["data-big"]
+            # 获取无水印图片
+            img_link = img_link.replace("joJrvItByyS4HHaWdXyO_I7F0UeCRQYMHlogzbt7GHgNNiIYVnHvzugZCuBITtvjski7YaLlHpkrQUr5euoQrg", "")
+            if not img_link.endswith(".jpg"):
+                img_link = img_link.split(".jpg")[0]+".jpg"
+            # 延时下载
+            time.sleep(self.download_delay)
+            logger.info("正在下载: {}".format(img_link))
+            saveimg = os.path.join(pic_dir, f"u{user_id}_{i}{os.path.splitext(img_link)[-1]}")
+            # IP代理
+            if len(proxy_list) > 0:  # 还是用 IP代理 来请图床。
+                # 随机从IP列表中选择一个IP
+                proxy = random.choice(proxy_list)
+                # 基于选择的IP构建连接
+                handle = urllib.request.ProxyHandler({proxy[0]: proxy[1]})
+                opener = urllib.request.build_opener(handle)
+                urllib.request.install_opener(opener=opener)
+            urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
+        return len(item)
+
+    def get_comments(self, html, pic_dir):
+        bs = BeautifulSoup(html, "html.parser")
+        mongo = Mongo(config_file="config/config.yaml", application="MongoDB")
+
+        reviews_div = bs.find('div', class_="reviews-items")
+        # 只获取子节点
+        ul = reviews_div.find('ul')
+        comments_li = ul.find_all('li', recursive=False)
+
+        for index, comment_li in enumerate(comments_li):
+            comment = Comment(shop_id=self.shop_id, user_id=index)
+            # rank * 3
+            rank_items = comment_li.find_all('span', class_="item")
+            comment.rank['taste'], comment.rank['environment'], comment.rank['service'] = self.get_rank_text(rank_items)
+            # words
+            words_div = comment_li.find('div', class_="review-words")
+            comment.words = words_div.text.strip()
+            # pic // 根据 index 进行存储 TODO
+            reviews_pic = comment_li.find('div', class_="review-pictures")
+            if reviews_pic is not None:
+                comment.pic_num = self.download_pic_each(reviews_pic, pic_dir, index, self.proxy_list)
+            # time
+            time_span = comment_li.find('span', class_="time")
+            comment.time = time_span.text.strip()
+
+            mongo.insert("comment", comment.to_json())
+
+    def get_rank_text(self, rank_items):
+        """
+        获取 rank-items 中的具体评分
+        :param rank_items:
+        :return: len = 3 的浮点数组
+        """
+        rank = []
+        for item in rank_items:
+            # 正则表达式匹配数字，可能包括小数点
+            numbers = re.findall(r'\d+\.\d+', item.text)
+            if numbers:  # 确保找到了数字
+                # print(f"Extracted number: {numbers[0]}")
+                rank.append(numbers[0])
+            else:
+                print("No number found")
+
+        while len(rank) < 3:  # maybe bug
+            rank.append(0.0)
+        return rank
+
