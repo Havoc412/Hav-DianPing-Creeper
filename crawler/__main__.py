@@ -1,5 +1,6 @@
 from crawler.core import application
 
+
 class DaZhongDianPing(application):
     def __init__(self, config_file, application):
         super().__init__(config_file, application)
@@ -12,7 +13,6 @@ class DaZhongDianPing(application):
     def get_urls(self):
         urls = [self.base_url.format(self.shop_id, _) for _ in range(self.page_start, self.page_end+1)]
         return urls
-
 
 
 def main():

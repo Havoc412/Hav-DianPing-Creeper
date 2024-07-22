@@ -25,7 +25,7 @@ class Crawl:
             handle = urllib.request.ProxyHandler({proxy[0]: proxy[1]})
             opener = urllib.request.build_opener(handle)
             urllib.request.install_opener(opener=opener)
-        request = urllib.request.Request(url=url, data=data, headers=headers, method=method)
+        request = urllib.request.Request(url=url, data=data, headers=headers, method=method)  # 实际上爬取 html 的操作只是一个 GET 的接口。
         response = self.urlopen(request)
         return response
     
@@ -46,9 +46,9 @@ class Crawl:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
         return content
-    
-class application():
 
+
+class application():
     def __init__(self, config_file, application):
         self.crawler = Crawl()
         self.config = load_yaml(config_file)[application]
@@ -76,10 +76,10 @@ class application():
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
         ]
         self.headers = {
-        "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Encoding":"gzip, deflate, br, zstd",
-        "Accept-Language":"zh,zh-CN;q=0.9,en;q=0.8",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Language": "zh,zh-CN;q=0.9,en;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
         }
         # 更新headers
         for k, v in self.config["headers"].items():
@@ -91,10 +91,10 @@ class application():
             hander = logging.FileHandler(filename=log_file)
         else:
             hander = logging.StreamHandler()
-        logger.setLevel(logging.INFO) # 设置日志级别
+        logger.setLevel(logging.INFO)  # 设置日志级别
         # log格式
         fmt = '%(asctime)s - %(levelname)s: %(message)s'
-        format_str = logging.Formatter(fmt)#设置日志格式
+        format_str = logging.Formatter(fmt)  # 设置日志格式
         hander.setFormatter(format_str)
         logger.addHandler(hander)
         # proxy
@@ -111,14 +111,18 @@ class application():
     def get_urls(self):
         return [self.base_url]
 
+    def filter_proxy(self):
+        """检查IP代理池是否可用"""
+        self.proxy_list = [_ for _ in self.proxy_list if self.proxy_is_availabel(_)]
+
     def get_title(self, html):
         bs = BeautifulSoup(html, "html.parser")
         # 读取店铺名
-        shop_name = bs.find("h1",class_="shop-name").string.strip()
+        shop_name = bs.find("h1", class_="shop-name").string.strip()
         if len(shop_name) == 0:
             raise Exception("店铺名称为空！")
         return shop_name
-    
+
     def check_login(self, html):
         """检查网页是否登录"""
         if re.search("登录失败", html):
@@ -141,16 +145,12 @@ class application():
             logger.info(f"IP代理{proxy[0]}://{proxy[1]}无效！")
             print(f"IP代理{proxy[0]}://{proxy[1]}无效！")
             return False
-        
-    def filter_proxy(self):
-        """检查IP代理池是否可用"""
-        self.proxy_list = [_ for _ in self.proxy_list if self.proxy_is_availabel(_)]
 
-    def crawl(self):
+    def crawl(self):  # 启动入口
         # 下载html
         for i, url in enumerate(self.urls):
             self.headers["User-Agent"] = random.choice(self.user_agent)
-            # check ip proxy
+            # check ip proxy: ip will be useless any time
             self.filter_proxy()
             # 链接网址
             resp = self.crawler.request(url=url, proxy_list=self.proxy_list, headers=self.headers)
@@ -163,7 +163,7 @@ class application():
             html = resp.read()
             html = gzip.decompress(html).decode("utf-8")
             # 保存html
-            self.check_login(html)
+            self.check_login(html)  # check usable
             shop_name = self.get_title(html)
             dir_path = os.path.join(self.save_dir, f"{shop_name}")
             if not os.path.exists(dir_path):
@@ -183,10 +183,12 @@ class application():
 
     def download_pic(self, html, pic_dir, page_num, proxy_list):
         bs = BeautifulSoup(html, "html.parser")
+
         def is_img_and_has_data_big(tag):
-            return tag.has_attr("data-big")
+            return tag.has_attr("data-big")  # 通过 tag 来获取指定元素，然后通过 IP 代理来获取图片。
+
         items = bs.find_all(is_img_and_has_data_big)
-        for i,item in enumerate(items):
+        for i, item in enumerate(items):
             img_link = item.attrs["data-big"]
             # 获取无水印图片
             img_link = img_link.replace("joJrvItByyS4HHaWdXyO_I7F0UeCRQYMHlogzbt7GHgNNiIYVnHvzugZCuBITtvjski7YaLlHpkrQUr5euoQrg", "")
@@ -197,11 +199,11 @@ class application():
             logger.info("正在下载: {}".format(img_link))
             saveimg = os.path.join(pic_dir, f"p{page_num}_{i}{os.path.splitext(img_link)[-1]}")
             # IP代理
-            if len(proxy_list) > 0:
+            if len(proxy_list) > 0:  # 还是用 IP代理 来请图床。
                 # 随机从IP列表中选择一个IP
                 proxy = random.choice(proxy_list)
                 # 基于选择的IP构建连接
                 handle = urllib.request.ProxyHandler({proxy[0]: proxy[1]})
                 opener = urllib.request.build_opener(handle)
                 urllib.request.install_opener(opener=opener)
-            urllib.request.urlretrieve(img_link, saveimg) # 下载链接内容
+            urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
