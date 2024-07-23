@@ -230,6 +230,9 @@ class application():
             urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
 
     def download_pic_each(self, pic_div, pic_dir, user_id, proxy_list):
+        """"
+        这是我后来写的单对评论的架构。
+        """
         def is_img_and_has_data_big(tag):
             return tag.has_attr("data-big")  # 通过 tag 来获取指定元素，然后通过 IP 代理来获取图片。
 
