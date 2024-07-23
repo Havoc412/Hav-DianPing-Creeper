@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 
 
 from crawler.utils.yaml_utils import load_yaml
+from crawler.utils.encode import encode_chinese
 from crawler.models.comment import Comment
 from crawler.MongoDB.Mongo import Mongo
 
@@ -28,6 +29,7 @@ class Crawl:
             handle = urllib.request.ProxyHandler({proxy[0]: proxy[1]})
             opener = urllib.request.build_opener(handle)
             urllib.request.install_opener(opener=opener)
+        print("Request url:", url)
         request = urllib.request.Request(url=url, data=data, headers=headers, method=method)  # 实际上爬取 html 的操作只是一个 GET 的接口。
         response = self.urlopen(request)
         return response
@@ -55,8 +57,12 @@ class application():
     def __init__(self, config_file, application):
         self.crawler = Crawl()
         self.config = load_yaml(config_file)[application]
-        self.shop_id = self.config["shop_id"]  # shop_id !!
-        self.base_url = self.config["base_url"]
+        self.shop_id = self.config["shop_id"]  # shop_id !!  # todo list 之后就不该从 config 中获取，而是通过 search 动态获取了。
+        self.shop_name = None
+        # url path
+        self.base_url_search_food = self.config["base_url_search_food"]
+        self.base_url_shop = self.config["base_url_shop"]
+        self.base_url_comment = self.config["base_url_comment"]
         # 爬取的图片保存地址
         self.save_dir = self.config["save_dir"]
         os.makedirs(self.save_dir, exist_ok=True)
@@ -112,8 +118,8 @@ class application():
         logger.info("header: {}".format(self.headers))
         logger.info("proxy: {}".format(self.proxy_list))
 
-    def get_urls(self):
-        return [self.base_url]
+    def get_urls_comment(self):
+        return [self.base_url_comment]
 
     def filter_proxy(self):
         """检查IP代理池是否可用"""
@@ -125,6 +131,7 @@ class application():
         shop_name = bs.find("h1", class_="shop-name").string.strip()
         if len(shop_name) == 0:
             raise Exception("店铺名称为空！")  # 通过检查 Shop Name 的方式，来确保获取的 html 可用。
+        self.shop_name = shop_name
         return shop_name
 
     def check_login(self, html):
@@ -150,15 +157,52 @@ class application():
             print(f"IP代理{proxy[0]}://{proxy[1]}无效！")
             return False
 
-    def read_html_from_file(self, file_path):
+    def read_html_from_request(self, file_path):
         """读取本地 HTML 文件内容"""
         with open(file_path, 'r', encoding='utf-8') as file:
             html_content = file.read()
         return html_content
 
-    def crawl(self):  # 启动入口
+    def get_html_from_respose(self, url, save_path):
+        """
+        从网络上获取目标路径。
+        :param url:
+        :param save_path: 由外部确认保存的位置。
+        :return:
+        """
+        # check ip proxy: ip will be useless any time
+        self.headers["User-Agent"] = random.choice(self.user_agent)
+        self.filter_proxy()
+        # link to url
+        resp = self.crawler.request(url=url, proxy_list=self.proxy_list, headers=self.headers)
+        if resp.code == 200:
+            print(f">>> 链接{url}成功响应!")
+            logger.info(f">>> 链接{url}成功响应!")
+        else:
+            print(f">>> 链接{url}响应失败:{resp.code}")
+            logger.info(f">>> 链接{url}响应失败:{resp.code}")
+        # get html
+        html = resp.read()
+        html = gzip.decompress(html).decode("utf-8")
+        # save html
+        self.check_login(html)
+        # shop_name = self.get_title(html)
+        self.crawler.write_txt(save_path, html)
+        resp.close()
+        return html
+
+    def save_html_to_file(self, html, file_path):
+        # todo list 将从res获取的HTML写入到本地，通过调用Crawl类的方式。
+        # 但好像也没有必要了。
+        pass
+
+    def crawl_comments(self):  # 启动入口
+        """
+        默认用于 comments
+        :return:
+        """
         # 下载html
-        for i, url in enumerate(self.urls):
+        for i, url in enumerate(self.urls_comment):
             # self.headers["User-Agent"] = random.choice(self.user_agent)
             # # check ip proxy: ip will be useless any time
             # self.filter_proxy()
@@ -229,35 +273,9 @@ class application():
                 urllib.request.install_opener(opener=opener)
             urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
 
-    def download_pic_each(self, pic_div, pic_dir, user_id, proxy_list):
-        """"
-        这是我后来写的单对评论的架构。
-        """
-        def is_img_and_has_data_big(tag):
-            return tag.has_attr("data-big")  # 通过 tag 来获取指定元素，然后通过 IP 代理来获取图片。
-
-        items = pic_div.find_all(is_img_and_has_data_big)
-        for i, item in enumerate(items):
-            img_link = item.attrs["data-big"]
-            # 获取无水印图片
-            img_link = img_link.replace("joJrvItByyS4HHaWdXyO_I7F0UeCRQYMHlogzbt7GHgNNiIYVnHvzugZCuBITtvjski7YaLlHpkrQUr5euoQrg", "")
-            if not img_link.endswith(".jpg"):
-                img_link = img_link.split(".jpg")[0]+".jpg"
-            # 延时下载
-            time.sleep(self.download_delay)
-            logger.info("正在下载: {}".format(img_link))
-            saveimg = os.path.join(pic_dir, f"u{user_id}_{i}{os.path.splitext(img_link)[-1]}")
-            # IP代理
-            if len(proxy_list) > 0:  # 还是用 IP代理 来请图床。
-                # 随机从IP列表中选择一个IP
-                proxy = random.choice(proxy_list)
-                # 基于选择的IP构建连接
-                handle = urllib.request.ProxyHandler({proxy[0]: proxy[1]})
-                opener = urllib.request.build_opener(handle)
-                urllib.request.install_opener(opener=opener)
-            urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
-        return len(item)
-
+    """
+        the function for comments
+    """
     def get_comments(self, html, pic_dir):
         bs = BeautifulSoup(html, "html.parser")
         mongo = Mongo(config_file="config/config.yaml", application="MongoDB")
@@ -305,3 +323,83 @@ class application():
             rank.append(0.0)
         return rank
 
+    def download_pic_each(self, pic_div, pic_dir, user_id, proxy_list):
+        """"
+        这是我后来写的单对评论的图片获取。
+        """
+        def is_img_and_has_data_big(tag):
+            return tag.has_attr("data-big")  # 通过 tag 来获取指定元素，然后通过 IP 代理来获取图片。
+
+        items = pic_div.find_all(is_img_and_has_data_big)
+        for i, item in enumerate(items):
+            img_link = item.attrs["data-big"]
+            # 获取无水印图片
+            img_link = img_link.replace("joJrvItByyS4HHaWdXyO_I7F0UeCRQYMHlogzbt7GHgNNiIYVnHvzugZCuBITtvjski7YaLlHpkrQUr5euoQrg", "")
+            if not img_link.endswith(".jpg"):
+                img_link = img_link.split(".jpg")[0]+".jpg"
+            # 延时下载
+            time.sleep(self.download_delay)
+            logger.info("正在下载: {}".format(img_link))
+            saveimg = os.path.join(pic_dir, f"u{user_id}_{i}{os.path.splitext(img_link)[-1]}")
+            # IP代理
+            if len(proxy_list) > 0:  # 还是用 IP代理 来请图床。
+                # 随机从IP列表中选择一个IP
+                proxy = random.choice(proxy_list)
+                # 基于选择的IP构建连接
+                handle = urllib.request.ProxyHandler({proxy[0]: proxy[1]})
+                opener = urllib.request.build_opener(handle)
+                urllib.request.install_opener(opener=opener)
+            urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
+        return len(item)
+
+    """
+        crawl to shop
+    """
+    def crawl_shop_info(self):
+        url = self.base_url_shop.format(self.shop_id)
+        # get && save html
+        dir_path = os.path.join(self.save_dir, f"{self.shop_id}")
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        html_path = os.path.join(dir_path, "shop-info.html")
+        html = self.get_html_from_respose(url, html_path)
+        # self.check_login(html)
+        self.get_shop_info(html)
+        # save the pic
+        # dir_path = os.path.join(self.save_dir, self.shop_name)
+        print("Finish the task")
+
+    def get_shop_info(self, html):
+        """
+
+        :param html:
+        :param pic_dir: 存储店铺 photo && 特色菜的文件夹。
+        :return:
+        """
+        pass
+
+    """
+        crawl to search by keyword
+    """
+    def crawl_search(self):
+        """
+        作为第二端口，获取店铺基本信息（部分），收集 shop_id 用于访问详情 && 评论。
+        :param keyword: 此处 keyword 主要是特定的 景区名，然后通过大众点评的通道10，主要获取附近餐饮信息。
+        :return:
+        """
+        keyword = self.config['search_pt']
+        encode_keyword = encode_chinese(keyword)
+        url = self.base_url_search_food.format(encode_keyword)
+        # get && save html
+        dir_path = os.path.join(self.save_dir, f"{keyword}")
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        html_path = os.path.join(dir_path, "search-pt-1.html")
+        html = self.get_html_from_respose(url, html_path)
+
+        self.get_shop_info(html)
+
+        print("Get Over")
+
+    def get_shop_info(self, html):
+        pass
