@@ -19,9 +19,11 @@ class Shop:
         self.phone_number = []
         self.cuisine = {
             "main": [],
-            "other": []
+            "all": []
         }
         self.business_hours = None
+
+        self.TABLE_NAME = 'shop'
 
     def to_json(self):  # tip 这种工作交给 GPT 就是方便。
         return {
@@ -36,6 +38,9 @@ class Shop:
             'cuisine': self.cuisine,
             'business_hours': self.business_hours
         }
+
+    def insert(self, mongodb):
+        mongodb.insert(self.TABLE_NAME, self.to_json())
 
 
 if __name__ == "__main__":
