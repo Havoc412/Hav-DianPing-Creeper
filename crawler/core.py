@@ -450,9 +450,10 @@ class application():
             # 查找包含 data-shopid 的 a 标签
             a_tag = pic_div.find('a', attrs={'data-shopid': True})
             shop_id = a_tag['data-shopid'] if a_tag else None
+
             # build new shop && add shop_id to spot
             shop = Shop(shop_id)
-            spot.shop_ids.append(shop.shop_id)  # 并加入到 spot 中
+
             # 查找 img 标签并获取 src 属性
             img_tag = a_tag.find('img') if a_tag else None
             img_src = img_tag['src'] if img_tag else None
@@ -462,6 +463,7 @@ class application():
             tit_div = txt_div.find('div', class_='tit')
             h4_tag = tit_div.find('h4')
             shop.shop_name = h4_tag.text if h4_tag else None
+            spot.add_shop_list(shop.shop_id, shop.shop_name)  # 并加入到 spot 中
 
             # todo 然后去下载单张图片
             save_path = os.path.join(pic_dir_path, f'{shop.shop_name}-{shop.shop_id}.jpg')
