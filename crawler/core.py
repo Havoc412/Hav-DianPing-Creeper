@@ -9,10 +9,12 @@ import logging
 import random
 from bs4 import BeautifulSoup
 
-
 from crawler.utils.yaml_utils import load_yaml
 from crawler.utils.encode import encode_chinese
+
 from crawler.models.comment import Comment
+from crawler.models.spot import Spot
+from crawler.models.shop import Shop
 from crawler.MongoDB.Mongo import Mongo
 
 logger = logging.getLogger(__name__)
@@ -117,6 +119,8 @@ class application():
         # 打印基本参数
         logger.info("header: {}".format(self.headers))
         logger.info("proxy: {}".format(self.proxy_list))
+        # database link
+        self.mongo = Mongo(config_file="config/config.yaml", application="MongoDB")
 
     def get_urls_comment(self):
         return [self.base_url_comment]
@@ -190,11 +194,6 @@ class application():
         self.crawler.write_txt(save_path, html)
         resp.close()
         return html
-
-    def save_html_to_file(self, html, file_path):
-        # todo list 将从res获取的HTML写入到本地，通过调用Crawl类的方式。
-        # 但好像也没有必要了。
-        pass
 
     def crawl_comments(self):  # 启动入口
         """
@@ -278,7 +277,7 @@ class application():
     """
     def get_comments(self, html, pic_dir):
         bs = BeautifulSoup(html, "html.parser")
-        mongo = Mongo(config_file="config/config.yaml", application="MongoDB")
+        # mongo = Mongo(config_file="config/config.yaml", application="MongoDB")
 
         reviews_div = bs.find('div', class_="reviews-items")
         # 只获取子节点
@@ -301,7 +300,7 @@ class application():
             time_span = comment_li.find('span', class_="time")
             comment.time = time_span.text.strip()
 
-            mongo.insert("comment", comment.to_json())
+            self.mongo.insert("comment", comment.to_json())
 
     def get_rank_text(self, rank_items):
         """
@@ -379,11 +378,11 @@ class application():
         pass
 
     """
-        crawl to search by keyword
+    crawl to search by keyword
     """
     def crawl_search(self):
         """
-        作为第二端口，获取店铺基本信息（部分），收集 shop_id 用于访问详情 && 评论。
+        作为 第二端口 ，获取店铺基本信息（部分），收集 shop_id 用于访问详情 && 评论。
         :param keyword: 此处 keyword 主要是特定的 景区名，然后通过大众点评的通道10，主要获取附近餐饮信息。
         :return:
         """
@@ -395,11 +394,86 @@ class application():
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
         html_path = os.path.join(dir_path, "search-pt-1.html")
-        html = self.get_html_from_respose(url, html_path)
+        print("html_path: {}".format(html_path))  # test
+        # html = self.get_html_from_respose(url, html_path)
+        html = self.read_html_from_request(html_path)
+        # get specific data
+        spot = Spot(spot_name=keyword)
+        # todo 这里设计一个遍历，获取 50 ~ 100，先目标 5 页的数据吧。
+        self.get_spot_with_shop_info(html, spot, dir_path)
+        # save the spot
+        self.mongo.insert("spot", spot.to_json())
 
-        self.get_shop_info(html)
+        # todo other operations
 
-        print("Get Over")
+        print("Finish the task of Search")
 
-    def get_shop_info(self, html):
+    def get_spot_with_shop_info(self, html, spot, dir_path):
+        """
+        存储 spot 结构
+        从 search 路由获取初步的 shop 信息。
+        :param dir_path:
+        :param spot:
+        :param html:
+        :return:
+        """
+
+        def get_tags(tag_div_inside):
+            tag_list = []
+            tags_a = tag_div_inside.find_all('a')
+            for tag in tags_a:
+                tag_list.append(tag.find('span').text)
+            if len(tag_list) < 2:
+                tag_list.append(None)
+            return tag_list
+
+        def get_recommend(recommend_div_inside):
+            recommend_list = []
+            recommend_a = recommend_div_inside.find_all('a')
+            # todo <a> 中的 href 可以导航到目标菜品的详细介绍，之后可以考虑。
+            for recommend in recommend_a:
+                recommend_list.append(recommend.text)
+            return recommend_list
+
+        # 店铺首图的存储路径
+        pic_dir_path = os.path.join(dir_path, "shop-pic")
+        # core
+        bs = BeautifulSoup(html, "html.parser")
+        # 获取 shop 的 li 节点
+        shop_list_div = bs.find('div', class_="shop-all-list")
+        ul = shop_list_div.find('ul')
+        shops_li = ul.find_all('li', recursive=False)
+
+        for index, shop_li in enumerate(shops_li):
+            # from Picture module
+            pic_div = shop_li.find('div', class_="pic")
+            # 查找包含 data-shopid 的 a 标签
+            a_tag = pic_div.find('a', attrs={'data-shopid': True})
+            shop_id = a_tag['data-shopid'] if a_tag else None
+            # build new shop && add shop_id to spot
+            shop = Shop(shop_id)
+            spot.shop_ids.append(shop.shop_id)  # 并加入到 spot 中
+            # 查找 img 标签并获取 src 属性
+            img_tag = a_tag.find('img') if a_tag else None
+            img_src = img_tag['src'] if img_tag else None
+
+            # from  Txt model
+            txt_div = shop_li.find('div', class_='txt')
+            tit_div = txt_div.find('div', class_='tit')
+            h4_tag = tit_div.find('h4')
+            shop.shop_name = h4_tag.text if h4_tag else None
+
+            # todo 然后去下载单张图片
+            save_path = os.path.join(pic_dir_path, f'{shop.shop_name}-{shop.shop_id}.jpg')
+            # self.download_pic_single(img_src, save_path)
+
+            tag_div = txt_div.find('div', class_='tag-addr')
+            shop.type, shop.address['brief'] = get_tags(tag_div)
+
+            recommend_div = txt_div.find('div', class_='recommend')
+            shop.cuisine['main'] = get_recommend(recommend_div)
+
+            self.mongo.insert("shop", shop.to_json())
+
+    def get_shop_pic_from_search(self, img_div):
         pass
