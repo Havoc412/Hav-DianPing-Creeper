@@ -1,7 +1,7 @@
 
 class Spot:
-    def __init__(self, spot_name, city):
-        self.spot_id = None
+    def __init__(self, spot_id, spot_name, city):
+        self.spot_id = spot_id
         self.spot_name = spot_name
         self.city = city    # todo 设定城市
         self.shop_list = []

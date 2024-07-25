@@ -9,18 +9,21 @@ import logging
 import random
 from bs4 import BeautifulSoup
 
-# from crawler.utils.yaml_utils import load_yaml
-# from crawler.utils.encode import encode_chinese
-# from crawler.utils.html import (
-#     read_html_from_file,
-#     get_rank_text,
-#     get_shop_info,
-# )
-#
-# from crawler.models.comment import Comment
-# from crawler.models.spot import Spot
-# from crawler.models.shop import Shop
-# from crawler.MongoDB.Mongo import Mongo
+from crawler.utils.yaml_utils import load_yaml
+from crawler.utils.encode import encode_chinese
+from crawler.utils.html import (
+    read_html_from_file,
+    get_rank_text,
+    get_shop_info,
+)
+
+# 存储用数据库基本配置
+from crawler.MongoDB.Mongo import Mongo
+from crawler.models.comment import Comment
+from crawler.models.spot import Spot
+from crawler.models.shop import Shop
+from crawler.models.city import City
+from crawler.models.admin import Admin
 
 
 logger = logging.getLogger(__name__)
@@ -162,7 +165,7 @@ class application():
         logger.info("header: {}".format(self.headers))
         logger.info("proxy: {}".format(self.proxy_list))
         # database link
-        self.mongo = None  # Mongo(config_file="config/config.yaml", application="MongoDB")
+        self.mongo = Mongo(config_file="config/config.yaml", application="MongoDB")  # None
         # todo spot
 
     def filter_proxy(self):
@@ -413,7 +416,7 @@ class application():
     """
     crawl to search by keyword
     """
-    def crawl_search(self, keyword=None):
+    def crawl_search_food(self, keyword=None):
         """
         作为 第二端口 ，获取店铺基本信息（部分），收集 shop_id 用于访问详情 && 评论。
         :param keyword: 此处 keyword 主要是特定的 景区名，然后通过大众点评的通道10，主要获取附近餐饮信息。
@@ -535,6 +538,72 @@ class application():
             # 并加入到 spot 中
             spot.add_shop_list(shop)
 
+    def crawl_search_city(self):
+        """
+        第一入口
+        :return:
+        """
+        # set city Model
+        city = City(self.city_name)  # set by __main__.py
+        dir_path = os.path.join(self.save_dir, self.city_name)
+        os.makedirs(dir_path, exist_ok=True)
+        # request the search page
+        url = self.base_url_search_city.format(city.city_EN)
+        html_path = os.path.join(dir_path, "search-city.html")
+        # html = self.get_html_from_response(url, html_path)
+        html = read_html_from_file(html_path)
+
+        self.get_admin_ids(html, dir_path, city)
+        # load Model city
+        city.insert(self.mongo)
+        for spot in city.spot_list:
+            print(spot['spot_id'], spot['spot_name'])
+
+        print("todo next!")
+
+    def get_admin_ids(self, html, dir_path, city):
+        """
+
+        :param html:
+        :param dir_path:
+        :param city:
+        :return:
+        """
+        def get_spot_ids(html_inside, admin_inside):
+            bs_inside = BeautifulSoup(html_inside, "html.parser")
+            spot_id_div = bs_inside.find('div', id="region-nav-sub")
+
+            items_inside = spot_id_div.find_all('a')
+            items_inside = items_inside[1:]  # 使用切片从第二个元素开始
+
+            for item_inside in items_inside:
+                spot_id = item_inside.get('data-cat-id')
+                spot_name = item_inside.find('span').text.strip()
+
+                admin_inside.add_spot(spot_id, spot_name)
+
+        bs = BeautifulSoup(html, "html.parser")
+
+        admin_id_div = bs.find('div', id="region-nav")
+        items = admin_id_div.find_all('a')
+
+        for item in items:
+            # 提取 data-cat-id 和 data-click-title 属性
+            data_cat_id = item.get('data-cat-id')
+            data_click_title = item.get('data-click-title')
+            # create Model - admin
+            admin = Admin(data_cat_id, data_click_title)
+            # 随后就获取 spot_list
+            url = item.get('href')  # admin 级别的 search
+            html_path = os.path.join(dir_path, f"admin-{data_cat_id}-{data_click_title}.html")
+            # sub_html = self.get_html_from_response(url, html_path)
+            sub_html = read_html_from_file(html_path)
+            # 获取 admin 层次下的 spot_id
+            get_spot_ids(sub_html, admin)
+            # load
+            admin.insert(self.mongo)
+            city.add_admin(admin)
+
     def test(self):
         url = self.base_url_search_city.format('wuhan')
         html_path = os.path.join(self.save_dir, "test.html")
@@ -543,18 +612,13 @@ class application():
 
 
 if __name__ == '__main__':
-    from Crawler.crawler.utils.yaml_utils import load_yaml
-    from Crawler.crawler.utils.encode import encode_chinese
-    from Crawler.crawler.utils.html import (
-        read_html_from_file,
-        get_rank_text,
-        get_shop_info,
-    )
-
-    # from Crawler.crawler.models.comment import Comment
-    # from Crawler.crawler.models.spot import Spot
-    # from Crawler.crawler.models.shop import Shop
-    # from Crawler.crawler.MongoDB.Mongo import Mongo
+    # from Crawler.crawler.utils.yaml_utils import load_yaml
+    # from Crawler.crawler.utils.encode import encode_chinese
+    # from Crawler.crawler.utils.html import (
+    #     read_html_from_file,
+    #     get_rank_text,
+    #     get_shop_info,
+    # )
 
     application = application(config_file="../config/config.yaml", application="dazhongdianping")
 
