@@ -44,6 +44,23 @@ class Mongo:
         results = collection.find(query)
         return [result for result in results]
 
+    def find_last_data(self, collection_name: str):
+        collection = self.db[collection_name]
+        last_cursor = collection.find().sort('_id', -1).limit(1)
+        last_element = list(last_cursor)
+        if last_element:
+            last_dict = last_element[0]
+        else:
+            last_dict = None
+        return last_dict
+
+    def find_admin_by_city(self, city_admin_list):
+        admin_id_list = [item['admin_id'] for item in city_admin_list]
+
+        collection = self.db['admin']
+        matching_admins = list(collection.find({'admin_id': {'$in': admin_id_list}}))
+        return matching_admins
+
     def delete_data(self, collection_name: str, query: dict) -> None:
         """
         根据查询条件在指定集合中删除数据。
@@ -51,7 +68,8 @@ class Mongo:
         :param query: 一个字典，表示删除条件。
         """
         collection = self.db[collection_name]
-        collection.delete_many(query)
+        result = collection.delete_many(query)
+        print(f"delete {result} element from {collection_name}")
 
     def close_connection(self) -> None:
         """

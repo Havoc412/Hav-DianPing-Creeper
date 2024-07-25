@@ -1,9 +1,4 @@
 dazhongdianping:
-#  search_city: 武汉  # 设定目标城市
-
-  # todo 之后增加搜索景区数的设定。
-  # ...
-
   search_city:
     base_url: https://www.dianping.com/{}/ch10  # 城市美食 url，format 城市的拼音，eg. wuhan, beijing
     name: 武汉
@@ -11,39 +6,32 @@ dazhongdianping:
   search_spot:
     base_url: https://www.dianping.com/{}/ch10/r{}p{}  # 根据点位的设计
     page_start: 1
-    page_end: 1
+    page_end: 2
 
-#  search_pt: 武汉大学  # todo 先用来测试
-#  search_food:
-#    base_url: https://www.dianping.com/search/keyword/16/10_{}/p{}  # 最后一部分是【搜索关键词】，其他参数指明通道、地点等信息，可以不改，
-#    page_start: 1
-#    page_end: 1
-
-#  shop_id: G2SMWbLyR2ZRfSBr # 店铺id，根据链接店铺链接可确定  # todo 之后会取消
   base_url_shop: https://www.dianping.com/shop/{}  # 店铺核心信息的 url， 但实际上只用于获取【营业时间】
 
   comment:
     base_url: https://www.dianping.com/shop/{}/review_all/p{}  # question 这个后缀的 Query 参数我不确定是干什么用的 # ?queryType=isPic&queryVal=true # 指定comment类别的标记
     page_start: 1 # 评论的起始页
-    page_end: 1 # 评论的终止页
+    page_end: 3 # 评论的终止页
 
   save_dir: result # 爬取结果保存的地址
-  crawl_delay: 1 # 网页爬取的中间间隔
+  crawl_delay: 2 # 网页爬取的中间间隔
   download_delay: 0.1 # 图片下载的间隔
   set_logfile: True # 是否保存log文件
 
   headers:  # 需要更新到header的信息
-    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; s_ViewType=10; dplet=927089797f65d010228006603492a513; dper=0202e3236b7cb0d5a359f4ae51a7de49e2763829274e65b91aa2009ca2c1f2a8403510d7b9350670de0e8ceba79840eb39d2f15caa5423dab5dc00000000a82100003b20b65cb0cffce0b1570fbf5ef5565bb6a8e8a0c071db61f1ccef3a0d09882628969012560f18dcae6604b1037285d7; ua=dpuser_0915129033; fspop=test; qruuid=cb331e17-d563-4694-a0e9-57ff8d2ba146; aburl=1; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; ll=7fd06e815b796be3df069dec7836c3df; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1721645911,1721731494,1721801566,1721868713; HMACCOUNT=882C038ECD1DDD51; cy=2; cye=beijing; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1721908878; _lxsdk_s=190e9b5140c-c29-937-7e2%7C%7C178
+    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; s_ViewType=10; dplet=927089797f65d010228006603492a513; dper=0202e3236b7cb0d5a359f4ae51a7de49e2763829274e65b91aa2009ca2c1f2a8403510d7b9350670de0e8ceba79840eb39d2f15caa5423dab5dc00000000a82100003b20b65cb0cffce0b1570fbf5ef5565bb6a8e8a0c071db61f1ccef3a0d09882628969012560f18dcae6604b1037285d7; ua=dpuser_0915129033; fspop=test; qruuid=cb331e17-d563-4694-a0e9-57ff8d2ba146; aburl=1; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; ll=7fd06e815b796be3df069dec7836c3df; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1721645911,1721731494,1721801566,1721868713; HMACCOUNT=882C038ECD1DDD51; cy=2; cye=beijing; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1721925334; _lxsdk_s=190ea85bc83-e5f-85f-195%7C%7C151
     # 替换成自己的cookie
     Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
     Accept-Encodin: gzip, deflate, br, zstd
     Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
 
-  use_proxy: False # 若不使用IP代理，置为False
-  proxy: 
-  - http|120.194.4.157:5443 # 可去在右边网站获取 https://cn.proxy-tools.com/proxy/cn
-  - http|43.154.96.33:80
-  - http|218.75.102.198:8000
+  use_proxy: True # 若不使用IP代理，置为False
+  proxy:
+  - http|198.44.255.3:80 # 可去在右边网站获取 https://cn.proxy-tools.com/proxy/cn
+  - http|101.37.30.185:80
+  - http|36.99.35.138:82
 
 MongoDB:  # MongoDB 基本控制
   host: 'localhost'

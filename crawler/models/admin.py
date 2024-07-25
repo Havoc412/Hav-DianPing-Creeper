@@ -2,8 +2,8 @@
     行政区 类
 """
 
-# from model import MongoModel
 from crawler.models.model import MongoModel
+# from Crawler.crawler.models.model import MongoModel
 
 
 class Admin(MongoModel):
