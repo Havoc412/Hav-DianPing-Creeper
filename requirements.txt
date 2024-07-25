@@ -1,1 +1,8 @@
-beautifulsoup4
+beautifulsoup4==4.12.3
+Crawler==0.0.2
+fake_useragent==1.5.1
+lxml==5.2.2
+pymongo==4.8.0
+pypinyin==0.51.0
+PyYAML==6.0.1
+Requests==2.32.3
