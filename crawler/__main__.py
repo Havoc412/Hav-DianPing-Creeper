@@ -16,7 +16,7 @@ def main():
     print("*****请注意登录官网，避免美团人机识别！！！*****")
     print("*****请注意登录官网，避免美团人机识别！！！*****")
     dianping = DaZhongDianPing(config_file="config/config.yaml", application="dazhongdianping")
-    dianping.crawl_search_city()  # todo 当前还是 第二入口 开始
+    dianping.crawl_search_city()  # 第一入口
 
 
 if __name__ == "__main__":

@@ -98,7 +98,7 @@ def sleep_random(delay):
     time.sleep(random.uniform(delay, delay+1))
 
 
-class application():
+class application:
     def __init__(self, config_file, application):
         self.crawler = Crawl()
         self.config = load_yaml(config_file)[application]
@@ -107,7 +107,8 @@ class application():
 
         # url path
         self.base_url_search_city = self.config["search_city"]["base_url"]
-        self.base_url_search_food = self.config["search_food"]["base_url"]
+        self.base_url_search_spot = self.config["search_spot"]["base_url"]  # new
+        # self.base_url_search_food = self.config["search_food"]["base_url"]
         self.base_url_shop = self.config["base_url_shop"]
         self.base_url_comment = self.config["comment"]["base_url"]
         # 爬取的图片保存地址
@@ -416,26 +417,29 @@ class application():
     """
     crawl to search by keyword
     """
-    def crawl_search_food(self, keyword=None):
+    def crawl_search_food(self, city_EN=None, dir_path=None, spot_id=None, spot_name=None):
         """
         作为 第二端口 ，获取店铺基本信息（部分），收集 shop_id 用于访问详情 && 评论。
-        :param keyword: 此处 keyword 主要是特定的 景区名，然后通过大众点评的通道10，主要获取附近餐饮信息。
+        :param city_EN:
+        :param dir_path:
+        :param spot_id:
+        :param spot_name:
         :return:
         """
-        keyword = self.config['search_pt']  # todo 之后从 city 的列表中获取。
-        encode_keyword = encode_chinese(keyword)
+        # keyword = self.config['search_pt']  # todo 之后从 city 的列表中获取。
+        # encode_keyword = encode_chinese(keyword)
         # get && save html
-        dir_path = os.path.join(self.save_dir, f"{keyword}")
+        dir_path = os.path.join(dir_path, f"{spot_id}-{spot_name}")
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
         # 遍历 search keyword
-        page_start = self.config["search_food"]["page_start"]
-        page_end = self.config["search_food"]["page_end"]
-        spot = Spot(spot_name=keyword, city=self.city)
+        page_start = self.config["search_spot"]["page_start"]
+        page_end = self.config["search_spot"]["page_end"]
+        spot = Spot(spot_id=spot_id, spot_name=spot_name, city=city_EN)
 
         def get_urls():
-            return [self.base_url_search_food.format(encode_keyword, _) for _ in range(page_start, page_end + 1)]
+            return [self.base_url_search_spot.format(city_EN, spot_id, _) for _ in range(page_start, page_end + 1)]
 
         # todo 这里设计一个遍历，获取 50 ~ 100，先目标 5 页的数据吧。
         for i, url in enumerate(get_urls()):
@@ -550,14 +554,19 @@ class application():
         # request the search page
         url = self.base_url_search_city.format(city.city_EN)
         html_path = os.path.join(dir_path, "search-city.html")
-        # html = self.get_html_from_response(url, html_path)
-        html = read_html_from_file(html_path)
 
-        self.get_admin_ids(html, dir_path, city)
+        html = self.get_html_from_response(url, html_path)
+        # html = read_html_from_file(html_path)
+
+        admin_dir_path = os.path.join(dir_path, ".admin-html")
+        os.makedirs(admin_dir_path, exist_ok=True)
+        self.get_admin_ids(html, admin_dir_path, city)
         # load Model city
         city.insert(self.mongo)
         for spot in city.spot_list:
-            print(spot['spot_id'], spot['spot_name'])
+            print("---", spot['spot_id'], spot['spot_name'], "---")
+            # 执行后续操作
+            self.crawl_search_food(city.city_EN, dir_path, spot['spot_id'], spot['spot_name'])
 
         print("todo next!")
 
@@ -596,8 +605,8 @@ class application():
             # 随后就获取 spot_list
             url = item.get('href')  # admin 级别的 search
             html_path = os.path.join(dir_path, f"admin-{data_cat_id}-{data_click_title}.html")
-            # sub_html = self.get_html_from_response(url, html_path)
-            sub_html = read_html_from_file(html_path)
+            sub_html = self.get_html_from_response(url, html_path)
+            # sub_html = read_html_from_file(html_path)
             # 获取 admin 层次下的 spot_id
             get_spot_ids(sub_html, admin)
             # load

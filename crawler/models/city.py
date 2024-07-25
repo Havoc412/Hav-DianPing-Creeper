@@ -33,3 +33,7 @@ class City:
 
     def insert(self, mongo):
         mongo.insert(self.TABLE_NAME, self.to_json())
+
+    def get_spot_list(self):
+        unique_list = {d['spot_id']: d for d in self.spot_list}.values()
+        return unique_list
