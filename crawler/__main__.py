@@ -3,8 +3,10 @@ from crawler.core import application
 
 class DaZhongDianPing(application):
     def __init__(self, config_file, application):
-        super().__init__(config_file, application)  # todo 第一入口的设定之后就写在这里
-        self.city = self.config["search_city"]  # 设定目标城市 # todo 现阶段考虑个别城市基本足够。
+        super().__init__(config_file, application)
+        self.city_name = self.config["search_city"]["name"]  # 设定目标城市
+
+        self.BACK_TASK = False  # 是否沿用上次的任务记录。
 
 
 def main():
@@ -12,8 +14,11 @@ def main():
     print("*****请注意更新Cookie和IP代理！！！*****")
     print("*****请注意更新Cookie和IP代理！！！*****")
     print("*****请注意更新Cookie和IP代理！！！*****")
+    print("*****请注意登录官网，避免美团人机识别！！！*****")
+    print("*****请注意登录官网，避免美团人机识别！！！*****")
+    print("*****请注意登录官网，避免美团人机识别！！！*****")
     dianping = DaZhongDianPing(config_file="config/config.yaml", application="dazhongdianping")
-    dianping.crawl_search()  # todo 当前还是 第二入口 开始
+    dianping.crawl()
 
 
 if __name__ == "__main__":

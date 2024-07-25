@@ -7,6 +7,7 @@ import time
 import requests
 import logging
 import random
+import webbrowser
 from bs4 import BeautifulSoup
 
 from crawler.utils.yaml_utils import load_yaml
@@ -17,15 +18,34 @@ from crawler.utils.html import (
     get_shop_info,
 )
 
+# 存储用数据库基本配置
+from crawler.MongoDB.Mongo import Mongo
 from crawler.models.comment import Comment
 from crawler.models.spot import Spot
 from crawler.models.shop import Shop
-from crawler.MongoDB.Mongo import Mongo
+from crawler.models.city import City
+from crawler.models.admin import Admin
 
 logger = logging.getLogger(__name__)
 
 
 class Crawl:
+    # def __init__(self):
+        # # 隧道域名:端口号
+        # tunnel = "q547.kdltpspro.com:15818"
+        #
+        # # 用户名密码方式
+        # username = "t12192669709642"
+        # password = "u2t9srwx"
+        # self.proxies = {
+        #     "http": "http://%(user)s:%(pwd)s@%(proxy)s/" % {"user": username, "pwd": password, "proxy": tunnel},
+        #     "https": "http://%(user)s:%(pwd)s@%(proxy)s/" % {"user": username, "pwd": password, "proxy": tunnel}
+        # }
+        # # 使用隧道域名发送请求
+        # proxy_support = urllib.request.ProxyHandler(self.proxies)
+        # opener = urllib.request.build_opener(proxy_support)
+        # urllib.request.install_opener(opener)   # 注意此处是全局设置代理，如用这种写法进程内之后的所有urllib请求都会使用代理
+
     def request(self, url, proxy_list, data=None, headers=None, method="GET"):
         # IP代理
         if len(proxy_list) > 0:
@@ -60,13 +80,6 @@ class Crawl:
         return content
 
 
-def check_login(html):  # 因为 logger， 就先留在这个 py 了。
-    """检查网页是否登录"""
-    if re.search("登录失败", html):
-        logger.info("网页未登录账号，请更新Cookie后重试！")
-        raise Exception("网页未登录账号，请更新Cookie后重试！")
-
-
 def proxy_is_availabel(proxy):
     try:
         # 设置重连次数
@@ -94,15 +107,13 @@ def sleep_random(delay):
     time.sleep(random.uniform(delay, delay+1))
 
 
-class application():
+class application:
     def __init__(self, config_file, application):
         self.crawler = Crawl()
         self.config = load_yaml(config_file)[application]
-        # self.shop_id = self.config["shop_id"]  # shop_id !!  # todo list 之后就不该从 config 中获取，而是通过 search 动态获取了。
-        # self.shop_name = None
-
         # url path
-        self.base_url_search_food = self.config["search_food"]["base_url"]
+        self.base_url_search_city = self.config["search_city"]["base_url"]
+        self.base_url_search_spot = self.config["search_spot"]["base_url"]  # new
         self.base_url_shop = self.config["base_url_shop"]
         self.base_url_comment = self.config["comment"]["base_url"]
         # 爬取的图片保存地址
@@ -160,12 +171,30 @@ class application():
         logger.info("header: {}".format(self.headers))
         logger.info("proxy: {}".format(self.proxy_list))
         # database link
-        self.mongo = Mongo(config_file="config/config.yaml", application="MongoDB")
-        # todo spot
+        self.mongo = Mongo(config_file=config_file, application="MongoDB")  # None
+        # func
+        self.comment_num = 0
 
     def filter_proxy(self):
         """检查IP代理池是否可用"""
         self.proxy_list = [_ for _ in self.proxy_list if proxy_is_availabel(_)]
+
+    def check_login(self, html, url):  # 因为 logger， 就先留在这个 py 了。
+        """检查网页是否登录"""
+        if re.search("登录失败", html):
+            logger.info("网页未登录账号，请更新Cookie后重试！")
+            raise Exception("网页未登录账号，请更新Cookie后重试！")
+        elif re.search("身份核实", html):
+            logger.info("需要进行身份核实，请打开指定网页。")
+            # 打开指定网页
+            webbrowser.open(url)  # 替换为实际的验证网址
+            logger.info("请在网页上进行身份核实。")
+            cookie = input("请输入新的 Cookies:\n")  # 等待用户输入以挂起程序
+            logger.info("身份核实完成，程序继续运行。")
+            # todo 获取重新获取 Cookies 也可以在这个时候做.
+            self.headers['Cookie'] = cookie
+            return False
+        return True
 
     # def get_title(self, html):
     #     bs = BeautifulSoup(html, "html.parser")
@@ -179,14 +208,15 @@ class application():
     """
     获取 html 数据的两种方式; from local is in html.py
     """
-    def get_html_from_respose(self, url, save_path):
+    def get_html_from_response(self, url, save_path, retry_count=3):
         """
         从网络上获取目标路径。
+        :param retry_count: 最大重试次数，通过递归实现。
         :param url:
         :param save_path: 由外部确认保存的位置。
         :return:
         """
-        sleep_random(self.crawl_delay)  #
+        sleep_random(self.crawl_delay)
 
         # check ip proxy: ip will be useless any time
         self.headers["User-Agent"] = random.choice(self.user_agent)
@@ -203,7 +233,17 @@ class application():
         html = resp.read()
         html = gzip.decompress(html).decode("utf-8")
         # save html
-        check_login(html)
+        if not self.check_login(html, url):
+            if retry_count > 0:
+                print(f">>> 登录检查失败，正在重试... 剩余重试次数: {retry_count}")
+                logger.info(f">>> 登录检查失败，正在重试... 剩余重试次数: {retry_count}")
+                return self.get_html_from_response(url, save_path, retry_count - 1)  # 递归重试
+            else:
+                print(f">>> 登录检查失败，已达到最大重试次数，停止尝试。")
+                logger.info(f">>> 登录检查失败，已达到最大重试次数，停止尝试。")
+                resp.close()
+                return None  # 如果重试次数用尽，返回 None
+
         self.crawler.write_txt(save_path, html)
         resp.close()
         return html
@@ -219,7 +259,7 @@ class application():
         :return:
         """
         page_start = self.config["comment"]["page_start"]
-        page_end = self.config["comment"]["page_start"]
+        page_end = self.config["comment"]["page_end"]
         cuisine = set()
 
         # 获取目标 urls
@@ -227,15 +267,13 @@ class application():
             return [self.base_url_comment.format(shop.shop_id, _) for _ in range(page_start, page_end+1)]
 
         # 一页页遍历
+        self.comment_num = 0
         for i, url in enumerate(get_urls()):
-            # LOCAL TEST
             page_num = range(page_start, page_end+1)[i]
             html_path = os.path.join(dir_path, f"comment-page-{page_num}.html")
 
-            html = self.get_html_from_respose(url, html_path)
-            # html = read_html_from_file(html_path)  #
-
-            check_login(html)  # check usable
+            html = self.get_html_from_response(url, html_path)
+            # html = read_html_from_file(html_path)
 
             # 先获取 shop 信息
             if i == 0:
@@ -253,8 +291,8 @@ class application():
         # 从评论中获取各类 cuisine，然后再导入数据库。
         shop.cuisine['all'] = list(cuisine)
         shop.insert(self.mongo)
-        print(f">>> 所有 comment && picture 已完成下载，请查看:\n{dir_path}")
-        logger.info(f">>> 所有 comment && picture 已完成下载，请查看:\n{dir_path}")
+        print(f">>> 所有 comment && picture 已完成下载，请查看:    {dir_path}")
+        logger.info(f">>> 所有 comment && picture 已完成下载，请查看:    {dir_path}")
 
     # def download_pic(self, html, pic_dir, page_num, proxy_list):
     #     bs = BeautifulSoup(html, "html.parser")
@@ -297,7 +335,6 @@ class application():
         """
         recommend_cuisine = set()
         bs = BeautifulSoup(html, "html.parser")
-        # mongo = Mongo(config_file="config/config.yaml", application="MongoDB")
 
         reviews_div = bs.find('div', class_="reviews-items")
         # 只获取子节点
@@ -305,7 +342,12 @@ class application():
         comments_li = ul.find_all('li', recursive=False)
 
         for index, comment_li in enumerate(comments_li):
-            comment = Comment(shop_id=shop_id, user_id=index)
+            self.comment_num += 1  # 完整的计数
+            # logger
+            if index % 7 == 0:
+                print("Getting comments, now {", self.comment_num, "} in this page.")
+
+            comment = Comment(shop_id=shop_id, user_id=self.comment_num)
             # rank * 3
             rank_items = comment_li.find_all('span', class_="item")
             comment.rank['taste'], comment.rank['environment'], comment.rank['service'] = get_rank_text(rank_items)
@@ -315,7 +357,7 @@ class application():
             # pic
             reviews_pic = comment_li.find('div', class_="review-pictures")
             if reviews_pic is not None:
-                comment.pic_num = self.download_pic_each_comment(reviews_pic, pic_dir, index, self.proxy_list)
+                comment.pic_num = self.download_pic_each_comment(reviews_pic, pic_dir, self.comment_num, self.proxy_list)
             # time
             time_span = comment_li.find('span', class_="time")
             comment.time = time_span.text.strip()
@@ -390,7 +432,7 @@ class application():
         url = self.base_url_shop.format(shop.shop_id)
         # get && save html
         html_path = os.path.join(dir_path, "shop-info.html")
-        html = self.get_html_from_respose(url, html_path)
+        html = self.get_html_from_response(url, html_path)
         # html = read_html_from_file("result/k37IMiQDsL5EYDfw/shop-info.html")  # TEST
         # get the core info
         bs = BeautifulSoup(html, "html.parser")
@@ -411,56 +453,76 @@ class application():
     """
     crawl to search by keyword
     """
-    def crawl_search(self, keyword=None):
+    def crawl_search_food(self, city_EN=None, dir_path=None, spot_id=None, spot_name=None,
+                          need_pass=False, pass_shop_target=None):
         """
         作为 第二端口 ，获取店铺基本信息（部分），收集 shop_id 用于访问详情 && 评论。
-        :param keyword: 此处 keyword 主要是特定的 景区名，然后通过大众点评的通道10，主要获取附近餐饮信息。
+        :param need_pass:
+        :param pass_shop_target: 任务回复中，用于判断 shop 跳过数量的 id。
+
+        :param city_EN:
+        :param dir_path:
+        :param spot_id:
+        :param spot_name:
         :return:
         """
-        keyword = self.config['search_pt']  # todo 之后从 city 的列表中获取。
-        encode_keyword = encode_chinese(keyword)
+        if need_pass and pass_shop_target is None:
+            raise Exception("无法执行 shop 跳过逻辑，缺失参数")
+
         # get && save html
-        dir_path = os.path.join(self.save_dir, f"{keyword}")
+        dir_path = os.path.join(dir_path, f"{spot_id}-{spot_name}")
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
         # 遍历 search keyword
-        page_start = self.config["search_food"]["page_start"]
-        page_end = self.config["search_food"]["page_end"]
-        spot = Spot(spot_name=keyword, city=self.city)
+        page_start = self.config["search_spot"]["page_start"]
+        page_end = self.config["search_spot"]["page_end"]
+        spot = Spot(spot_id=spot_id, spot_name=spot_name, city=city_EN)
 
         def get_urls():
-            return [self.base_url_search_food.format(encode_keyword, _) for _ in range(page_start, page_end + 1)]
+            return [self.base_url_search_spot.format(city_EN, spot_id, _) for _ in range(page_start, page_end + 1)]
 
-        # todo 这里设计一个遍历，获取 50 ~ 100，先目标 5 页的数据吧。
         for i, url in enumerate(get_urls()):
             page_num = range(page_start, page_end + 1)[i]
             html_path = os.path.join(dir_path, f"search-pt-{page_num}.html")
 
-            html = self.get_html_from_respose(url, html_path)
-            # html = read_html_from_file(html_path)  # test by local html file
+            if need_pass:
+                html = read_html_from_file(html_path)  # test by local html file
+            else:
+                html = self.get_html_from_response(url, html_path)
 
             # get specific data
             self.get_spot_with_shop_info(html, spot, dir_path)
 
+        # logger
         print("Finish the task of [Search Spot]")
-        logger.info("Finish the task of [Search Spot].")
+        logger.info("!!! Finish the task of [Search Spot] !!!")
 
         spot.insert(self.mongo)  # spot 的任务完成了。
 
         # other operations， 目前看来就是直接联动，启动 shop 的查询。
-        for shop in spot.shop_list_class:  # 直接遍历 Shop 类
+        if need_pass is True:
+            if pass_shop_target in spot.shop_list:
+                index = spot.shop_list.index(pass_shop_target)
+                # delete next
+                delete_shop_id = spot.shop_list[index+1]['shop_id']
+                query = {'shop_id': delete_shop_id}
+                self.mongo.delete_data('comment', query)
+                index += 1
+            else:
+                raise Exception("Not found pass_shop_target, recover failed!!")
+        else:
+            index = 0
+
+        for shop in spot.shop_list_class[index:]:  # 直接遍历 Shop 类
             # check dir: base on the shop info
             sub_dir_path = os.path.join(dir_path, f"{shop.shop_id}-{shop.shop_name}")
             if not os.path.exists(sub_dir_path):
-                # continue  # test
                 os.makedirs(sub_dir_path)
             # 启动 shop 主页爬取
             self.crawl_shop_info(sub_dir_path, shop)
             # 然后爬取 review_all，先补充 shop，然后获取 review
             self.crawl_comments(sub_dir_path, shop)
-
-        print("FINISH ALL TASK!")
 
     def get_spot_with_shop_info(self, html, spot, dir_path):
         """
@@ -532,3 +594,160 @@ class application():
 
             # 并加入到 spot 中
             spot.add_shop_list(shop)
+
+    def crawl_search_city(self):
+        """
+        第一入口
+        :return:
+        """
+        # set city Model
+        city = City(self.city_name)  # set by __main__.py
+        dir_path = os.path.join(self.save_dir, self.city_name)
+        os.makedirs(dir_path, exist_ok=True)
+        # request the search page
+        url = self.base_url_search_city.format(city.city_EN)
+        html_path = os.path.join(dir_path, "search-city.html")
+
+        html = self.get_html_from_response(url, html_path)
+        # html = read_html_from_file(html_path)
+
+        admin_dir_path = os.path.join(dir_path, ".admin-html")
+        os.makedirs(admin_dir_path, exist_ok=True)
+        self.get_admin_ids(html, admin_dir_path, city)
+        # load Model city
+        city.insert(self.mongo)
+
+        for spot in city.get_spot_list():  # core task
+            print("---", spot['spot_id'], spot['spot_name'], "---")
+            logger.info(f"---{spot['spot_id'], spot['spot_name']}---")
+            # 执行后续操作
+            self.crawl_search_food(city.city_EN, dir_path, spot['spot_id'], spot['spot_name'])
+
+        print("todo next!")
+
+    def run_city_crawl(self, city):
+        dir_path = os.path.join(self.save_dir, self.city_name)
+        for spot in city.get_spot_list():  # core task
+            print("---", spot['spot_id'], spot['spot_name'], "---")
+            logger.info(f"---{spot['spot_id'], spot['spot_name']}---")
+            # 执行后续操作
+            self.crawl_search_food(city.city_EN, dir_path, spot['spot_id'], spot['spot_name'])
+
+    def get_admin_ids(self, html, dir_path, city):
+        """
+        获取 city 对应行政区 的 id
+        :param html:
+        :param dir_path:
+        :param city:
+        :return:
+        """
+        def get_spot_ids(html_inside, admin_inside):
+            bs_inside = BeautifulSoup(html_inside, "html.parser")
+            spot_id_div = bs_inside.find('div', id="region-nav-sub")
+
+            items_inside = spot_id_div.find_all('a')
+            items_inside = items_inside[1:]  # 使用切片从第二个元素开始
+
+            for item_inside in items_inside:
+                spot_id = item_inside.get('data-cat-id')
+                spot_name = item_inside.find('span').text.strip()
+
+                admin_inside.add_spot(spot_id, spot_name)
+
+        bs = BeautifulSoup(html, "html.parser")
+
+        admin_id_div = bs.find('div', id="region-nav")
+        items = admin_id_div.find_all('a')
+
+        for item in items:
+            # 提取 data-cat-id 和 data-click-title 属性
+            data_cat_id = item.get('data-cat-id')
+            data_click_title = item.get('data-click-title')
+            # create Model - admin
+            admin = Admin(data_cat_id, data_click_title)
+            # 随后就获取 spot_list
+            url = item.get('href')  # admin 级别的 search
+            html_path = os.path.join(dir_path, f"admin-{data_cat_id}-{data_click_title}.html")
+            sub_html = self.get_html_from_response(url, html_path)
+            # sub_html = read_html_from_file(html_path)
+            # 获取 admin 层次下的 spot_id
+            get_spot_ids(sub_html, admin)
+            # load
+            admin.insert(self.mongo)
+            city.add_admin(admin)
+
+    def back_task_from_db(self):
+        dir_path = os.path.join(self.save_dir, self.city_name)
+
+        # 恢复 city 信息
+        city_data = self.mongo.find_last_data('city')
+        city = City.from_db(city_data)
+        # print(city.to_json())
+        # 恢复 admin，需要获取匹配的全部
+        admin_list = self.mongo.find_admin_by_city(city.admin_list)
+        for admin in admin_list:
+            city.extend_spot(admin["spot_list"])
+        # 获取 最后一个 spot
+        spot_data = self.mongo.find_last_data('spot')
+        spot_target = {
+            'spot_id': spot_data['spot_id'],
+            'spot_name': spot_data['spot_name']
+        }
+        # 获取最后一个 shop
+        shop_data = self.mongo.find_last_data('shop')
+        shop_target = {
+            'shop_id': shop_data['shop_id'],
+            'shop_name': shop_data['shop_name'],
+        }
+        # todo 先这么操作一下
+        # 是当前 spot 的最后一个，所以直接从下一个 spot 开始
+        if spot_target in city.get_spot_list():
+            index = city.spot_list.index(spot_target)
+            # 依靠 last_check 来决定 跳过参数是否有效。
+            last_check = (spot_data['shop_list'][-1]['shop_id'] == shop_target['shop_id'])
+            # 从后续开始遍历 # todo 之后需要判断 shop 的后续，不断嵌套
+            for spot in city.spot_list[index+int(last_check):]:
+                print("---", spot['spot_id'], spot['spot_name'], "---")
+                logger.info(f"---{spot['spot_id'], spot['spot_name']}---")
+                # 执行后续操作
+                self.crawl_search_food(city.city_EN, dir_path, spot['spot_id'], spot['spot_name'],
+                                       need_pass=last_check, pass_shop_target=shop_target)
+                last_check = False  # 之后就不需要跳过了
+        else:
+            print("back find fail ?!")
+
+    def crawl(self):
+        """
+        是否直接启动，或从数据库中读取最后状态，然后恢复任务。
+        :return:
+        """
+        if self.BACK_TASK is False:
+            self.crawl_search_city()  # 一般的其中入口
+        else:
+            """
+            最核心的部分，都是在对 spot - shop 的遍历中。
+            """
+            # todo 读取 db 的最后状态
+            self.back_task_from_db()
+            # todo 调用函数开始恢复任务
+
+
+if __name__ == '__main__':
+    from Crawler.crawler.utils.yaml_utils import load_yaml
+    from Crawler.crawler.utils.encode import encode_chinese
+    from Crawler.crawler.utils.html import (
+        read_html_from_file,
+        get_rank_text,
+        get_shop_info,
+    )
+    from Crawler.crawler.MongoDB.Mongo import Mongo
+    from Crawler.crawler.models.comment import Comment
+    from Crawler.crawler.models.spot import Spot
+    from Crawler.crawler.models.shop import Shop
+    from Crawler.crawler.models.city import City
+    from Crawler.crawler.models.admin import Admin
+
+    application = application(config_file="../config/config.yaml", application="dazhongdianping")
+
+    application.back_task_from_db()
+
