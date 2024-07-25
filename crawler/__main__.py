@@ -4,7 +4,7 @@ from crawler.core import application
 class DaZhongDianPing(application):
     def __init__(self, config_file, application):
         super().__init__(config_file, application)  # todo 第一入口的设定之后就写在这里
-        self.city = self.config["search_city"]  # 设定目标城市 # todo 现阶段考虑个别城市基本足够。
+        # self.city = self.config["search_city"]  # 设定目标城市
 
 
 def main():

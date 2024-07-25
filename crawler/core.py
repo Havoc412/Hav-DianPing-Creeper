@@ -9,18 +9,19 @@ import logging
 import random
 from bs4 import BeautifulSoup
 
-from crawler.utils.yaml_utils import load_yaml
-from crawler.utils.encode import encode_chinese
-from crawler.utils.html import (
-    read_html_from_file,
-    get_rank_text,
-    get_shop_info,
-)
+# from crawler.utils.yaml_utils import load_yaml
+# from crawler.utils.encode import encode_chinese
+# from crawler.utils.html import (
+#     read_html_from_file,
+#     get_rank_text,
+#     get_shop_info,
+# )
+#
+# from crawler.models.comment import Comment
+# from crawler.models.spot import Spot
+# from crawler.models.shop import Shop
+# from crawler.MongoDB.Mongo import Mongo
 
-from crawler.models.comment import Comment
-from crawler.models.spot import Spot
-from crawler.models.shop import Shop
-from crawler.MongoDB.Mongo import Mongo
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,7 @@ class application():
         # self.shop_name = None
 
         # url path
+        self.base_url_search_city = self.config["search_city"]["base_url"]
         self.base_url_search_food = self.config["search_food"]["base_url"]
         self.base_url_shop = self.config["base_url_shop"]
         self.base_url_comment = self.config["comment"]["base_url"]
@@ -160,7 +162,7 @@ class application():
         logger.info("header: {}".format(self.headers))
         logger.info("proxy: {}".format(self.proxy_list))
         # database link
-        self.mongo = Mongo(config_file="config/config.yaml", application="MongoDB")
+        self.mongo = None  # Mongo(config_file="config/config.yaml", application="MongoDB")
         # todo spot
 
     def filter_proxy(self):
@@ -179,7 +181,7 @@ class application():
     """
     获取 html 数据的两种方式; from local is in html.py
     """
-    def get_html_from_respose(self, url, save_path):
+    def get_html_from_response(self, url, save_path):
         """
         从网络上获取目标路径。
         :param url:
@@ -232,7 +234,7 @@ class application():
             page_num = range(page_start, page_end+1)[i]
             html_path = os.path.join(dir_path, f"comment-page-{page_num}.html")
 
-            html = self.get_html_from_respose(url, html_path)
+            html = self.get_html_from_response(url, html_path)
             # html = read_html_from_file(html_path)  #
 
             check_login(html)  # check usable
@@ -390,7 +392,7 @@ class application():
         url = self.base_url_shop.format(shop.shop_id)
         # get && save html
         html_path = os.path.join(dir_path, "shop-info.html")
-        html = self.get_html_from_respose(url, html_path)
+        html = self.get_html_from_response(url, html_path)
         # html = read_html_from_file("result/k37IMiQDsL5EYDfw/shop-info.html")  # TEST
         # get the core info
         bs = BeautifulSoup(html, "html.parser")
@@ -437,7 +439,7 @@ class application():
             page_num = range(page_start, page_end + 1)[i]
             html_path = os.path.join(dir_path, f"search-pt-{page_num}.html")
 
-            html = self.get_html_from_respose(url, html_path)
+            html = self.get_html_from_response(url, html_path)
             # html = read_html_from_file(html_path)  # test by local html file
 
             # get specific data
@@ -532,3 +534,29 @@ class application():
 
             # 并加入到 spot 中
             spot.add_shop_list(shop)
+
+    def test(self):
+        url = self.base_url_search_city.format('wuhan')
+        html_path = os.path.join(self.save_dir, "test.html")
+        print(url, html_path)
+        self.get_html_from_response(url, html_path)
+
+
+if __name__ == '__main__':
+    from Crawler.crawler.utils.yaml_utils import load_yaml
+    from Crawler.crawler.utils.encode import encode_chinese
+    from Crawler.crawler.utils.html import (
+        read_html_from_file,
+        get_rank_text,
+        get_shop_info,
+    )
+
+    # from Crawler.crawler.models.comment import Comment
+    # from Crawler.crawler.models.spot import Spot
+    # from Crawler.crawler.models.shop import Shop
+    # from Crawler.crawler.MongoDB.Mongo import Mongo
+
+    application = application(config_file="../config/config.yaml", application="dazhongdianping")
+
+    application.test()
+

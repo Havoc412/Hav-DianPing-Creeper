@@ -1,6 +1,7 @@
 
 class Spot:
     def __init__(self, spot_name, city):
+        self.spot_id = None
         self.spot_name = spot_name
         self.city = city    # todo 设定城市
         self.shop_list = []
@@ -18,6 +19,7 @@ class Spot:
 
     def to_json(self):
         return {
+            'spot_id': self.spot_id,
             'spot_name': self.spot_name,
             'city': self.city,
             'shop_list': self.shop_list
