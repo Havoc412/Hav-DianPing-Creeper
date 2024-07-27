@@ -77,5 +77,6 @@ def get_shop_info(shop, html):
     shop.address['detail'] = get_address(shop_info_div.find('div', class_="address-info").text.strip())
 
     phone_info_div = shop_info_div.find('div', class_="phone-info")
-    shop.phone_number = get_phone_number_list(phone_info_div.text.strip())
+    if phone_info_div:
+        shop.phone_number = get_phone_number_list(phone_info_div.text.strip())
     # 至此 shop 基本就获取完毕了，只差 cuisine-all

@@ -69,7 +69,17 @@ class Mongo:
         """
         collection = self.db[collection_name]
         result = collection.delete_many(query)
-        print(f"delete {result} element from {collection_name}")
+        print(f"delete {result} element from {collection_name} by {query}")
+
+    def update_data(self, collection_name: str, query):
+        collection = self.db[collection_name]
+        res = collection.update_one(query[0], query[1])
+
+        # 打印返回结果
+        if res.upserted_id is not None:
+            print(f'Inserted document ID: {res.upserted_id}')  # 新插入文档的 ID
+        else:
+            print('No document was inserted.')
 
     def close_connection(self) -> None:
         """

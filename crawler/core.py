@@ -17,6 +17,7 @@ from crawler.utils.html import (
     get_rank_text,
     get_shop_info,
 )
+from crawler.utils.timer_watching import TimerWatch
 
 # 存储用数据库基本配置
 from crawler.MongoDB.Mongo import Mongo
@@ -25,6 +26,7 @@ from crawler.models.spot import Spot
 from crawler.models.shop import Shop
 from crawler.models.city import City
 from crawler.models.admin import Admin
+
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +123,7 @@ class application:
         os.makedirs(self.save_dir, exist_ok=True)
         # 爬取相关的参数
         self.crawl_delay = float(self.config["crawl_delay"])
+        self.crawl_lax_delay = float(self.config["crawl_lax_delay"])
         self.download_delay = float(self.config["download_delay"])
         self.user_agent = [
             "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36",
@@ -174,6 +177,8 @@ class application:
         self.mongo = Mongo(config_file=config_file, application="MongoDB")  # None
         # func
         self.comment_num = 0
+        # timer
+        self.timer = TimerWatch()
 
     def filter_proxy(self):
         """检查IP代理池是否可用"""
@@ -208,7 +213,7 @@ class application:
     """
     获取 html 数据的两种方式; from local is in html.py
     """
-    def get_html_from_response(self, url, save_path, retry_count=3):
+    def get_html_from_response(self, url, save_path, retry_count=3, delay_type=True):
         """
         从网络上获取目标路径。
         :param retry_count: 最大重试次数，通过递归实现。
@@ -216,7 +221,10 @@ class application:
         :param save_path: 由外部确认保存的位置。
         :return:
         """
-        sleep_random(self.crawl_delay)
+        if delay_type is True:  # 比较严格
+            sleep_random(self.crawl_delay)
+        else:  # 非严格
+            sleep_random(self.crawl_lax_delay)
 
         # check ip proxy: ip will be useless any time
         self.headers["User-Agent"] = random.choice(self.user_agent)
@@ -237,7 +245,7 @@ class application:
             if retry_count > 0:
                 print(f">>> 登录检查失败，正在重试... 剩余重试次数: {retry_count}")
                 logger.info(f">>> 登录检查失败，正在重试... 剩余重试次数: {retry_count}")
-                return self.get_html_from_response(url, save_path, retry_count - 1)  # 递归重试
+                return self.get_html_from_response(url, save_path, retry_count - 1, False)  # 递归重试
             else:
                 print(f">>> 登录检查失败，已达到最大重试次数，停止尝试。")
                 logger.info(f">>> 登录检查失败，已达到最大重试次数，停止尝试。")
@@ -264,7 +272,8 @@ class application:
 
         # 获取目标 urls
         def get_urls():
-            return [self.base_url_comment.format(shop.shop_id, _) for _ in range(page_start, page_end+1)]
+            # return [self.base_url_comment.format(shop.shop_id, _) for _ in range(page_start, page_end+1)]
+            return [self.base_url_comment.format(shop.shop_id)]
 
         # 一页页遍历
         self.comment_num = 0
@@ -272,8 +281,10 @@ class application:
             page_num = range(page_start, page_end+1)[i]
             html_path = os.path.join(dir_path, f"comment-page-{page_num}.html")
 
-            html = self.get_html_from_response(url, html_path)
-            # html = read_html_from_file(html_path)
+            if os.path.exists(html_path):
+                html = read_html_from_file(html_path)
+            else:
+                html = self.get_html_from_response(url, html_path)
 
             # 先获取 shop 信息
             if i == 0:
@@ -338,6 +349,8 @@ class application:
 
         reviews_div = bs.find('div', class_="reviews-items")
         # 只获取子节点
+        if reviews_div is None:
+            return recommend_cuisine
         ul = reviews_div.find('ul')
         comments_li = ul.find_all('li', recursive=False)
 
@@ -345,6 +358,7 @@ class application:
             self.comment_num += 1  # 完整的计数
             # logger
             if index % 7 == 0:
+                self.timer.start_timer()  # 不断重启计时器
                 print("Getting comments, now {", self.comment_num, "} in this page.")
 
             comment = Comment(shop_id=shop_id, user_id=self.comment_num)
@@ -369,6 +383,7 @@ class application:
             if recommend_div is not None:
                 for cuisine in recommend_div.find_all('a'):
                     recommend_cuisine.add(cuisine.text)
+        self.timer.stop_timer()
         return recommend_cuisine
 
     def download_pic_each_comment(self, pic_div, pic_dir, user_id, proxy_list):
@@ -380,6 +395,10 @@ class application:
 
         items = pic_div.find_all(is_img_and_has_data_big)
         for i, item in enumerate(items):
+            # 增加设定，获取单用户前三章。
+            if i > 3:
+                break
+
             img_link = item.attrs["data-big"]
             # 获取无水印图片
             img_link = img_link.replace("joJrvItByyS4HHaWdXyO_I7F0UeCRQYMHlogzbt7GHgNNiIYVnHvzugZCuBITtvjski7YaLlHpkrQUr5euoQrg", "")
@@ -397,7 +416,14 @@ class application:
                 handle = urllib.request.ProxyHandler({proxy[0]: proxy[1]})
                 opener = urllib.request.build_opener(handle)
                 urllib.request.install_opener(opener=opener)
-            urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
+            try:
+                urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
+            except urllib.error.ContentTooShortError:
+                print(f"# 下载不完整，跳过: {img_link}")
+                # return None  # 或者返回一个标识符，表示下载失败
+            except Exception as e:
+                print(f"# 下载时发生错误: {e}")
+
         return len(items)
 
     def download_pic_single(self, img_link, save_path):
@@ -417,7 +443,11 @@ class application:
             handle = urllib.request.ProxyHandler({proxy[0]: proxy[1]})
             opener = urllib.request.build_opener(handle)
             urllib.request.install_opener(opener=opener)
-        urllib.request.urlretrieve(img_link, save_path)  # 下载链接内容
+        try:
+            urllib.request.urlretrieve(img_link, save_path)  # 下载链接内容
+        except:
+            print("#下载错误:", img_link, save_path)
+            logger.info("# Downloading failed:{} - {}".format(img_link, save_path))
 
     """
         crawl to shop
@@ -441,6 +471,23 @@ class application:
         if item_span:
             shop.business_hours = item_span.text.strip()
 
+        # INFO 如果评论数 小于 15， 那就直接过滤此店。
+        comment_num_span = bs.find('span', id='reviewCount')
+
+        match = re.search(r'\d+', comment_num_span.text.strip())
+        if match:
+            number = match.group()  # 获取匹配的数字
+        else:
+            number = 0
+            # print("未找到数字")
+        if int(number) < 15:
+            print("评论过少，此店放弃。")
+            logger.info("! 评论过少，此店放弃。")
+            return False
+        else:
+            return True
+
+
     # def get_shop_info(self, html):
     #     """
     #     但是 【特色菜】 并不好直接获取，所以更换方式了。而 shop 主页面目标信息过少，此函数弃用。
@@ -454,10 +501,11 @@ class application:
     crawl to search by keyword
     """
     def crawl_search_food(self, city_EN=None, dir_path=None, spot_id=None, spot_name=None,
-                          need_pass=False, pass_shop_target=None):
+                          need_pass=False, pass_shop_target=None, last_spot_id=None):
         """
         作为 第二端口 ，获取店铺基本信息（部分），收集 shop_id 用于访问详情 && 评论。
         :param need_pass:
+        :param last_spot_id: 用于判断 spot 状态
         :param pass_shop_target: 任务回复中，用于判断 shop 跳过数量的 id。
 
         :param city_EN:
@@ -466,6 +514,11 @@ class application:
         :param spot_name:
         :return:
         """
+        if need_pass is True:
+            print("执行跳过逻辑")
+        else:
+            print("无需跳过状态")
+
         if need_pass and pass_shop_target is None:
             raise Exception("无法执行 shop 跳过逻辑，缺失参数")
 
@@ -478,6 +531,7 @@ class application:
         page_start = self.config["search_spot"]["page_start"]
         page_end = self.config["search_spot"]["page_end"]
         spot = Spot(spot_id=spot_id, spot_name=spot_name, city=city_EN)
+        spot.shop_list = []  # BUG： 强制清空。
 
         def get_urls():
             return [self.base_url_search_spot.format(city_EN, spot_id, _) for _ in range(page_start, page_end + 1)]
@@ -486,10 +540,10 @@ class application:
             page_num = range(page_start, page_end + 1)[i]
             html_path = os.path.join(dir_path, f"search-pt-{page_num}.html")
 
-            if need_pass:
+            if os.path.exists(html_path):
                 html = read_html_from_file(html_path)  # test by local html file
             else:
-                html = self.get_html_from_response(url, html_path)
+                html = self.get_html_from_response(url, html_path, delay_type=False)
 
             # get specific data
             self.get_spot_with_shop_info(html, spot, dir_path)
@@ -498,7 +552,8 @@ class application:
         print("Finish the task of [Search Spot]")
         logger.info("!!! Finish the task of [Search Spot] !!!")
 
-        spot.insert(self.mongo)  # spot 的任务完成了。
+        # if need_pass is False:
+        spot.insert(self.mongo)  # spot 的任务完成了。  # 还是需要再次上传更新。
 
         # other operations， 目前看来就是直接联动，启动 shop 的查询。
         if need_pass is True:
@@ -520,9 +575,10 @@ class application:
             if not os.path.exists(sub_dir_path):
                 os.makedirs(sub_dir_path)
             # 启动 shop 主页爬取
-            self.crawl_shop_info(sub_dir_path, shop)
+            comment_check = self.crawl_shop_info(sub_dir_path, shop)
             # 然后爬取 review_all，先补充 shop，然后获取 review
-            self.crawl_comments(sub_dir_path, shop)
+            if comment_check:
+                self.crawl_comments(sub_dir_path, shop)
 
     def get_spot_with_shop_info(self, html, spot, dir_path):
         """
@@ -579,18 +635,20 @@ class application:
             # from Txt model
             txt_div = shop_li.find('div', class_='txt')
             tit_div = txt_div.find('div', class_='tit')
-            h4_tag = tit_div.find('h4')
-            shop.shop_name = h4_tag.text if h4_tag else None
+            h4_tag = tit_div.find('a')
+            shop.shop_name = h4_tag.get('title').replace("/", "-") if h4_tag else None
 
             # 下载单张图片
             save_path = os.path.join(pic_dir_path, f'{shop.shop_id}-{shop.shop_name}.jpg')  # 从机器处理方便上，还是将 id 前置会更好。
-            self.download_pic_single(img_src, save_path)
+            if not os.path.exists(save_path):
+                self.download_pic_single(img_src, save_path)
 
             tag_div = txt_div.find('div', class_='tag-addr')
             shop.type, shop.address['brief'] = get_tags(tag_div)
 
             recommend_div = txt_div.find('div', class_='recommend')
-            shop.cuisine['main'] = get_recommend(recommend_div)
+            if recommend_div:
+                shop.cuisine['main'] = get_recommend(recommend_div)
 
             # 并加入到 spot 中
             spot.add_shop_list(shop)
@@ -608,7 +666,7 @@ class application:
         url = self.base_url_search_city.format(city.city_EN)
         html_path = os.path.join(dir_path, "search-city.html")
 
-        html = self.get_html_from_response(url, html_path)
+        html = self.get_html_from_response(url, html_path, delay_type=False)
         # html = read_html_from_file(html_path)
 
         admin_dir_path = os.path.join(dir_path, ".admin-html")
@@ -650,7 +708,7 @@ class application:
 
             for item_inside in items_inside:
                 spot_id = item_inside.get('data-cat-id')
-                spot_name = item_inside.find('span').text.strip()
+                spot_name = item_inside.find('span').text.strip().replace("/", "-")
 
                 admin_inside.add_spot(spot_id, spot_name)
 
@@ -668,7 +726,7 @@ class application:
             # 随后就获取 spot_list
             url = item.get('href')  # admin 级别的 search
             html_path = os.path.join(dir_path, f"admin-{data_cat_id}-{data_click_title}.html")
-            sub_html = self.get_html_from_response(url, html_path)
+            sub_html = self.get_html_from_response(url, html_path, delay_type=False)
             # sub_html = read_html_from_file(html_path)
             # 获取 admin 层次下的 spot_id
             get_spot_ids(sub_html, admin)
@@ -699,19 +757,21 @@ class application:
             'shop_id': shop_data['shop_id'],
             'shop_name': shop_data['shop_name'],
         }
-        # todo 先这么操作一下
         # 是当前 spot 的最后一个，所以直接从下一个 spot 开始
         if spot_target in city.get_spot_list():
             index = city.spot_list.index(spot_target)
             # 依靠 last_check 来决定 跳过参数是否有效。
-            last_check = (spot_data['shop_list'][-1]['shop_id'] == shop_target['shop_id'])
-            # 从后续开始遍历 # todo 之后需要判断 shop 的后续，不断嵌套
-            for spot in city.spot_list[index+int(last_check):]:
+            last_check = (spot_data['shop_list'][-1]['shop_id'] != shop_target['shop_id'])
+            print("pass info", spot_target, shop_target)
+            # input("debug!")
+            # 从后续开始遍历 # 之后需要判断 shop 的后续，不断嵌套
+            for spot in city.spot_list[index+int(not last_check):]:
                 print("---", spot['spot_id'], spot['spot_name'], "---")
                 logger.info(f"---{spot['spot_id'], spot['spot_name']}---")
                 # 执行后续操作
                 self.crawl_search_food(city.city_EN, dir_path, spot['spot_id'], spot['spot_name'],
-                                       need_pass=last_check, pass_shop_target=shop_target)
+                                       need_pass=last_check, pass_shop_target=shop_target,
+                                       last_spot_id=spot_target['spot_id'])
                 last_check = False  # 之后就不需要跳过了
         else:
             print("back find fail ?!")
@@ -727,9 +787,7 @@ class application:
             """
             最核心的部分，都是在对 spot - shop 的遍历中。
             """
-            # todo 读取 db 的最后状态
             self.back_task_from_db()
-            # todo 调用函数开始恢复任务
 
 
 if __name__ == '__main__':
@@ -750,4 +808,3 @@ if __name__ == '__main__':
     application = application(config_file="../config/config.yaml", application="dazhongdianping")
 
     application.back_task_from_db()
-
