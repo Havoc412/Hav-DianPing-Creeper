@@ -201,15 +201,6 @@ class application:
             return False
         return True
 
-    # def get_title(self, html):
-    #     bs = BeautifulSoup(html, "html.parser")
-    #     # 读取店铺名
-    #     shop_name = bs.find("h1", class_="shop-name").string.strip()
-    #     if len(shop_name) == 0:
-    #         raise Exception("店铺名称为空！")  # 通过检查 Shop Name 的方式，来确保获取的 html 可用。
-    #     self.shop_name = shop_name
-    #     return shop_name
-
     """
     获取 html 数据的两种方式; from local is in html.py
     """
@@ -221,10 +212,21 @@ class application:
         :param save_path: 由外部确认保存的位置。
         :return:
         """
+        def remove_suffix(input_string):
+            # 检查是否以 'p1' 或 '/p1' 结尾
+            if input_string.endswith('p1'):
+                return input_string[:-2]  # 删除 'p1'
+            elif input_string.endswith('/p1'):
+                return input_string[:-3]  # 删除 '/p1'
+            return input_string  # 如果没有以这两者结尾，则返回原字符串
+
         if delay_type is True:  # 比较严格
             sleep_random(self.crawl_delay)
         else:  # 非严格
             sleep_random(self.crawl_lax_delay)
+
+        # url 预处理
+        url = remove_suffix(url)
 
         # check ip proxy: ip will be useless any time
         self.headers["User-Agent"] = random.choice(self.user_agent)
@@ -251,8 +253,8 @@ class application:
                 logger.info(f">>> 登录检查失败，已达到最大重试次数，停止尝试。")
                 resp.close()
                 return None  # 如果重试次数用尽，返回 None
-
-        self.crawler.write_txt(save_path, html)
+        if save_path is not None:
+            self.crawler.write_txt(save_path, html)
         resp.close()
         return html
 
@@ -304,33 +306,6 @@ class application:
         shop.insert(self.mongo)
         print(f">>> 所有 comment && picture 已完成下载，请查看:    {dir_path}")
         logger.info(f">>> 所有 comment && picture 已完成下载，请查看:    {dir_path}")
-
-    # def download_pic(self, html, pic_dir, page_num, proxy_list):
-    #     bs = BeautifulSoup(html, "html.parser")
-    #
-    #     def is_img_and_has_data_big(tag):
-    #         return tag.has_attr("data-big")  # 通过 tag 来获取指定元素，然后通过 IP 代理来获取图片。
-    #
-    #     items = bs.find_all(is_img_and_has_data_big)
-    #     for i, item in enumerate(items):
-    #         img_link = item.attrs["data-big"]
-    #         # 获取无水印图片
-    #         img_link = img_link.replace("joJrvItByyS4HHaWdXyO_I7F0UeCRQYMHlogzbt7GHgNNiIYVnHvzugZCuBITtvjski7YaLlHpkrQUr5euoQrg", "")
-    #         if not img_link.endswith(".jpg"):
-    #             img_link = img_link.split(".jpg")[0]+".jpg"
-    #         # 延时下载
-    #         time.sleep(self.download_delay)
-    #         logger.info("正在下载: {}".format(img_link))
-    #         saveimg = os.path.join(pic_dir, f"p{page_num}_{i}{os.path.splitext(img_link)[-1]}")
-    #         # IP代理
-    #         if len(proxy_list) > 0:  # 还是用 IP代理 来请图床。
-    #             # 随机从IP列表中选择一个IP
-    #             proxy = random.choice(proxy_list)
-    #             # 基于选择的IP构建连接
-    #             handle = urllib.request.ProxyHandler({proxy[0]: proxy[1]})
-    #             opener = urllib.request.build_opener(handle)
-    #             urllib.request.install_opener(opener=opener)
-    #         urllib.request.urlretrieve(img_link, saveimg)  # 下载链接内容
 
     """
         the function for comments
@@ -395,7 +370,7 @@ class application:
 
         items = pic_div.find_all(is_img_and_has_data_big)
         for i, item in enumerate(items):
-            # 增加设定，获取单用户前三章。
+            # 增加设定，获取单用户前三张
             if i > 3:
                 break
 
@@ -462,8 +437,10 @@ class application:
         url = self.base_url_shop.format(shop.shop_id)
         # get && save html
         html_path = os.path.join(dir_path, "shop-info.html")
-        html = self.get_html_from_response(url, html_path)
-        # html = read_html_from_file("result/k37IMiQDsL5EYDfw/shop-info.html")  # TEST
+        if os.path.exists(html_path):
+            html = read_html_from_file(html_path)
+        else:
+            html = self.get_html_from_response(url, html_path)
         # get the core info
         bs = BeautifulSoup(html, "html.parser")
         business_hours_p = bs.find('p', class_='info-indent')  # 只获取第一个，也就是目标的营业时间
@@ -569,11 +546,14 @@ class application:
         else:
             index = 0
 
-        for shop in spot.shop_list_class[index:]:  # 直接遍历 Shop 类
+        for index, shop in enumerate(spot.shop_list_class[index:]):  # 直接遍历 Shop 类
             # check dir: base on the shop info
-            sub_dir_path = os.path.join(dir_path, f"{shop.shop_id}-{shop.shop_name}")
+            sub_dir_path = os.path.join(dir_path, f"{shop.shop_id}-{shop.shop_name.replace('/', '-')}")
             if not os.path.exists(sub_dir_path):
                 os.makedirs(sub_dir_path)
+            # 一定数量之后访问一次主页面
+            if index % 7 == 0:
+                self.get_html_from_response(get_urls()[int(index/15)], None, delay_type=False)
             # 启动 shop 主页爬取
             comment_check = self.crawl_shop_info(sub_dir_path, shop)
             # 然后爬取 review_all，先补充 shop，然后获取 review
@@ -666,8 +646,10 @@ class application:
         url = self.base_url_search_city.format(city.city_EN)
         html_path = os.path.join(dir_path, "search-city.html")
 
-        html = self.get_html_from_response(url, html_path, delay_type=False)
-        # html = read_html_from_file(html_path)
+        if os.path.exists(html_path):
+            html = read_html_from_file(html_path)
+        else:
+            html = self.get_html_from_response(url, html_path, delay_type=False)
 
         admin_dir_path = os.path.join(dir_path, ".admin-html")
         os.makedirs(admin_dir_path, exist_ok=True)
@@ -682,14 +664,6 @@ class application:
             self.crawl_search_food(city.city_EN, dir_path, spot['spot_id'], spot['spot_name'])
 
         print("todo next!")
-
-    def run_city_crawl(self, city):
-        dir_path = os.path.join(self.save_dir, self.city_name)
-        for spot in city.get_spot_list():  # core task
-            print("---", spot['spot_id'], spot['spot_name'], "---")
-            logger.info(f"---{spot['spot_id'], spot['spot_name']}---")
-            # 执行后续操作
-            self.crawl_search_food(city.city_EN, dir_path, spot['spot_id'], spot['spot_name'])
 
     def get_admin_ids(self, html, dir_path, city):
         """
@@ -708,7 +682,7 @@ class application:
 
             for item_inside in items_inside:
                 spot_id = item_inside.get('data-cat-id')
-                spot_name = item_inside.find('span').text.strip().replace("/", "-")
+                spot_name = item_inside.find('span').text.strip().replace("/", "-")  # todo 没有替换成功？
 
                 admin_inside.add_spot(spot_id, spot_name)
 
@@ -765,7 +739,6 @@ class application:
             # 依靠 last_check 来决定 跳过参数是否有效。
             last_check = (spot_data['shop_list'][-1]['shop_id'] != shop_target['shop_id'])
             print("pass info", spot_target, shop_target)
-            # input("debug!")
             # 从后续开始遍历 # 之后需要判断 shop 的后续，不断嵌套
             for spot in city.spot_list[index+int(not last_check):]:
                 print("---", spot['spot_id'], spot['spot_name'], "---")
