@@ -726,8 +726,10 @@ class application:
             # 随后就获取 spot_list
             url = item.get('href')  # admin 级别的 search
             html_path = os.path.join(dir_path, f"admin-{data_cat_id}-{data_click_title}.html")
-            sub_html = self.get_html_from_response(url, html_path, delay_type=False)
-            # sub_html = read_html_from_file(html_path)
+            if os.path.exists(html_path):
+                sub_html = read_html_from_file(html_path)
+            else:
+                sub_html = self.get_html_from_response(url, html_path, delay_type=False)
             # 获取 admin 层次下的 spot_id
             get_spot_ids(sub_html, admin)
             # load
