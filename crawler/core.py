@@ -106,7 +106,7 @@ def sleep_random(delay):
     :param delay:
     :return:
     """
-    time.sleep(random.uniform(delay, delay+1))
+    time.sleep(random.uniform(delay, delay+3))
 
 
 class application:
@@ -196,7 +196,6 @@ class application:
             logger.info("请在网页上进行身份核实。")
             cookie = input("请输入新的 Cookies:\n")  # 等待用户输入以挂起程序
             logger.info("身份核实完成，程序继续运行。")
-            # todo 获取重新获取 Cookies 也可以在这个时候做.
             self.headers['Cookie'] = cookie
             return False
         return True
@@ -546,14 +545,16 @@ class application:
         else:
             index = 0
 
-        for index, shop in enumerate(spot.shop_list_class[index:]):  # 直接遍历 Shop 类
+        shop_len = len(spot.shop_list_class)
+        for idx, shop in enumerate(spot.shop_list_class[index:]):  # 直接遍历 Shop 类
             # check dir: base on the shop info
             sub_dir_path = os.path.join(dir_path, f"{shop.shop_id}-{shop.shop_name.replace('/', '-')}")
             if not os.path.exists(sub_dir_path):
                 os.makedirs(sub_dir_path)
-            # 一定数量之后访问一次主页面
-            if index % 7 == 0:
-                self.get_html_from_response(get_urls()[int(index/15)], None, delay_type=False)
+            # 一定数量之后访问一次父页面  # todo 难道还需要再向上一层？
+            if idx % 7 == 0:
+                print(f"-- shop status: {idx}/{shop_len} --")
+                self.get_html_from_response(get_urls()[int((idx+index)/15)], None, delay_type=False)
             # 启动 shop 主页爬取
             comment_check = self.crawl_shop_info(sub_dir_path, shop)
             # 然后爬取 review_all，先补充 shop，然后获取 review
@@ -595,6 +596,8 @@ class application:
         bs = BeautifulSoup(html, "html.parser")
         # 获取 shop 的 li 节点
         shop_list_div = bs.find('div', class_="shop-all-list")
+        if shop_list_div is None:
+            return
         ul = shop_list_div.find('ul')
         shops_li = ul.find_all('li', recursive=False)
 
@@ -725,7 +728,7 @@ class application:
         spot_data = self.mongo.find_last_data('spot')
         spot_target = {
             'spot_id': spot_data['spot_id'],
-            'spot_name': spot_data['spot_name']
+            'spot_name': spot_data['spot_name'].replace('-', '/')  # todo remove 下一个城市的时候
         }
         # 获取最后一个 shop
         shop_data = self.mongo.find_last_data('shop')
@@ -734,15 +737,17 @@ class application:
             'shop_name': shop_data['shop_name'],
         }
         # 是当前 spot 的最后一个，所以直接从下一个 spot 开始
+        print("pass info", spot_target, shop_target, city.city_EN)
         if spot_target in city.get_spot_list():
             index = city.spot_list.index(spot_target)
             # 依靠 last_check 来决定 跳过参数是否有效。
             last_check = (spot_data['shop_list'][-1]['shop_id'] != shop_target['shop_id'])
-            print("pass info", spot_target, shop_target)
             # 从后续开始遍历 # 之后需要判断 shop 的后续，不断嵌套
             for spot in city.spot_list[index+int(not last_check):]:
                 print("---", spot['spot_id'], spot['spot_name'], "---")
                 logger.info(f"---{spot['spot_id'], spot['spot_name']}---")
+                # todo 临时方案：解决恢复逻辑中 spot 名中的路径符号。 同上。
+                spot['spot_name'] = spot['spot_name'].replace('/', '-')
                 # 执行后续操作
                 self.crawl_search_food(city.city_EN, dir_path, spot['spot_id'], spot['spot_name'],
                                        need_pass=last_check, pass_shop_target=shop_target,
@@ -750,6 +755,7 @@ class application:
                 last_check = False  # 之后就不需要跳过了
         else:
             print("back find fail ?!")
+            raise Exception("back find fail?!")
 
     def crawl(self):
         """

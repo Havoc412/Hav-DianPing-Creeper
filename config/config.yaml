@@ -16,24 +16,25 @@ dazhongdianping:
     page_end: 1 # 评论的终止页
 
   save_dir: result # 爬取结果保存的地址
-  crawl_delay: 17 # 网页爬取的中间间隔
+  crawl_delay: 15 # 网页爬取的中间间隔
   crawl_lax_delay: 3  #
   download_delay: 0.1 # 图片下载的间隔
   set_logfile: True # 是否保存log文件
 
   headers:  # 需要更新到header的信息
-    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; s_ViewType=10; fspop=test; aburl=1; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; cy=16; cye=wuhan; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1721989271,1722046372,1722052280,1722101623; HMACCOUNT=882C038ECD1DDD51; qruuid=7837c321-8960-4f90-a6f8-8e1fb0ab407e; dplet=1161623a2932a7adf4808931161323e3; dper=0202082280c31013dded743b255334f09a4b292ec6aa8d66dbd4d09fb9d50ca14fb394390402992a132b96abea8e0ef62233f53a1067de0b2b2500000000a8210000be5ba4ee03189d6da613f3f808e96a66e7a4cbae6090679efcfdc46c0fc0a0dc33b48943dd09250a6bd7059298f40677; ll=7fd06e815b796be3df069dec7836c3df; ua=%E6%81%92%E6%98%9F; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1722142506; _lxsdk_s=190f78fa871-e76-007-55a%7C%7C1011
+    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; s_ViewType=10; fspop=test; aburl=1; cy=16; cye=wuhan; qruuid=669483ca-50b3-472b-a571-82d00158f049; dplet=68e00792e2d503cb0a0f123cf1eb3c8b; dper=0202f121491b62b896fe9a72655f4e23318b34a091fa95ca57b5bd8d80ba3cdf288b684ee0ed988f3bc98ff1565edf7118e75c079f50df5cd04c00000000a82100001fb06daa843fbdc610b1d72afd713c3ccfc65fa55dcfaf095705ea3725e7c46c8f4b65038464596257ce40ac35219ddd; ua=dpuser_2374394804; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; ll=7fd06e815b796be3df069dec7836c3df; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1722101623,1722255475,1722328576,1722331546; HMACCOUNT=882C038ECD1DDD51; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1722331550; _lxsdk_s=19102f5bd24-315-bf4-441%7C%7C39
     # 替换成自己的cookie
     Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
     Accept-Encodin: gzip, deflate, br, zstd
     Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
 
-  use_proxy: True # 若不使用IP代理，置为False
+  use_proxy: False # 若不使用IP代理，置为False
   proxy: # 可去在右边网站获取 https://cn.proxy-tools.com/proxy/cn
-  - http|47.56.110.204:8989
-  - http|183.215.23.242：9091
-  - http|106.1.94.48:8888
-  - http|120.26.0.11:8880
+  - http|218.87.205.76:17465
+  - http|103.200.127.202:1088
+  - http|65.52.174.95:3128
+  - http|45.92.177.60:8080
+  - http|39.105.27.30:3128
 
 MongoDB:  # MongoDB 基本控制
   host: 'localhost'

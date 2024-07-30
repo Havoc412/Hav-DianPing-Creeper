@@ -4,7 +4,7 @@ from crawler.utils.notice import notice
 
 def wait_operation():
     notice("任务超时！！！")
-    input("输入各种继续执行：")
+    # input("输入各种继续执行：")
 
 class TimerWatch:
     def __init__(self):
