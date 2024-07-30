@@ -1,40 +1,39 @@
 dazhongdianping:
   search_city:
     base_url: https://www.dianping.com/{}/ch10  # 城市美食 url，format 城市的拼音，eg. wuhan, beijing
-    name: 武汉
+    name: 武汉  # 主要就是更改此项为目标城市，后续任务都采用 爬虫 自动处理了。（！）
 
   search_spot:
-    base_url: https://www.dianping.com/{}/ch10/r{}o3p{}  # 根据点位的设计
+    base_url: https://www.dianping.com/{}/ch10/r{}o3p{}  # 根据点位的 url
     page_start: 1
     page_end: 2
 
-  base_url_shop: https://www.dianping.com/shop/{}  # 店铺核心信息的 url， 但实际上只用于获取【营业时间】
+  base_url_shop: https://www.dianping.com/shop/{}  # 店铺核心信息的 url， 但实际上只用于获取【营业时间】，以及过滤评论数过少的 shop。
 
   comment:
-    base_url: https://www.dianping.com/shop/{}/review_all  #(ps. 被 ban 了)  /p{}  # question 这个后缀的 Query 参数我不确定是干什么用的 # ?queryType=isPic&queryVal=true # 指定comment类别的标记
-    page_start: 1 # 评论的起始页
+    base_url: https://www.dianping.com/shop/{}/review_all  #(ps. 被 ban 了)  /p{}
+    page_start: 1 # 评论的起始页， 暂时未使用了，一页评论 15 条。
     page_end: 1 # 评论的终止页
 
   save_dir: result # 爬取结果保存的地址
-  crawl_delay: 15 # 网页爬取的中间间隔
-  crawl_lax_delay: 3  #
+  crawl_delay: 15 # 重点网页爬取的中间间隔
+  crawl_lax_delay: 3  # 非重点网页的间隔
   download_delay: 0.1 # 图片下载的间隔
   set_logfile: True # 是否保存log文件
 
-  headers:  # 需要更新到header的信息
-    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; s_ViewType=10; fspop=test; aburl=1; cy=16; cye=wuhan; qruuid=669483ca-50b3-472b-a571-82d00158f049; dplet=68e00792e2d503cb0a0f123cf1eb3c8b; dper=0202f121491b62b896fe9a72655f4e23318b34a091fa95ca57b5bd8d80ba3cdf288b684ee0ed988f3bc98ff1565edf7118e75c079f50df5cd04c00000000a82100001fb06daa843fbdc610b1d72afd713c3ccfc65fa55dcfaf095705ea3725e7c46c8f4b65038464596257ce40ac35219ddd; ua=dpuser_2374394804; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; ll=7fd06e815b796be3df069dec7836c3df; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1722101623,1722255475,1722328576,1722331546; HMACCOUNT=882C038ECD1DDD51; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1722331550; _lxsdk_s=19102f5bd24-315-bf4-441%7C%7C39
+  headers:  # 需要更新到header的信息（！）
+    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; s_ViewType=10; aburl=1; cy=16; cye=wuhan; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1722101623,1722255475,1722328576,1722331546; HMACCOUNT=882C038ECD1DDD51; fspop=test; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; qruuid=c488671d-7dad-4543-a136-f52b830c34fa; dplet=35617c38d41e2dd36549d54b62436cab; dper=020248229af093a22addf60f1c815a01953c6c27cd0f962cdd2d0d4ea84253ec5ec4e8aeaadd239ef744c5a93c7576ca09dde542a0914c03a04d00000000a8210000dc1cda39110caf351c7dcb85454735d3c53598b680f0be738bfd33ce8dd74b504e62abc2b3b7601d6f5e628c3f68e465; ll=7fd06e815b796be3df069dec7836c3df; ua=%E6%B4%BB%E6%B3%BC%E5%8B%A4%E4%BF%AD%E5%92%95%E5%98%9F%E8%9C%82; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1722358727; _lxsdk_s=1910490ef15-920-490-84d%7C%7C86
     # 替换成自己的cookie
     Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
     Accept-Encodin: gzip, deflate, br, zstd
     Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
 
-  use_proxy: False # 若不使用IP代理，置为False
-  proxy: # 可去在右边网站获取 https://cn.proxy-tools.com/proxy/cn
-  - http|218.87.205.76:17465
-  - http|103.200.127.202:1088
-  - http|65.52.174.95:3128
-  - http|45.92.177.60:8080
-  - http|39.105.27.30:3128
+  use_proxy: True # 若不使用IP代理，置为False
+  proxy: # 可去在右边网站获取 https://cn.proxy-tools.com/proxy/cn; https://www.kuaidaili.com/free
+  - http|111.59.4.88:9002
+  - http|111.225.152.222:8089
+  - http|183.215.23.242:9091
+  - http|111.59.4.88:9002
 
 MongoDB:  # MongoDB 基本控制
   host: 'localhost'
