@@ -11,6 +11,9 @@ class City:
         self.TABLE_NAME = "city"
         self.spot_list = []
 
+    def insert(self, mongo):
+        mongo.insert(self.TABLE_NAME, self.to_json())
+
     def add_admin(self, admin):
         """
         先记录 admin_id，用于保存 DB；
@@ -34,9 +37,6 @@ class City:
             'city_EN': self.city_EN,
             'admin_list': self.admin_list
         }
-
-    def insert(self, mongo):
-        mongo.insert(self.TABLE_NAME, self.to_json())
 
     def get_spot_list(self):
         """ 去重 """
