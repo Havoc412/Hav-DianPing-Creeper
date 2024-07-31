@@ -343,10 +343,10 @@ class application:
             # words
             words_div = comment_li.find('div', class_="review-words")
             comment.words = words_div.text.strip()
-            # pic
-            reviews_pic = comment_li.find('div', class_="review-pictures")
-            if reviews_pic is not None:
-                comment.pic_num = self.download_pic_each_comment(reviews_pic, pic_dir, self.comment_num, self.proxy_list)
+            # pic  取消评论图片下载。
+            # reviews_pic = comment_li.find('div', class_="review-pictures")
+            # if reviews_pic is not None:
+            #     comment.pic_num = self.download_pic_each_comment(reviews_pic, pic_dir, self.comment_num, self.proxy_list)
             # time
             time_span = comment_li.find('span', class_="time")
             comment.time = time_span.text.strip()
