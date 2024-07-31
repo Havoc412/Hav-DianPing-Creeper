@@ -196,7 +196,8 @@ class application:
             logger.info("请在网页上进行身份核实。")
             cookie = input("请输入新的 Cookies:\n")  # 等待用户输入以挂起程序
             logger.info("身份核实完成，程序继续运行。")
-            self.headers['Cookie'] = cookie
+            if len(cookie) > 20:  # 大致判断是否有效
+                self.headers['Cookie'] = cookie
             return False
         return True
 
@@ -342,10 +343,10 @@ class application:
             # words
             words_div = comment_li.find('div', class_="review-words")
             comment.words = words_div.text.strip()
-            # pic
-            reviews_pic = comment_li.find('div', class_="review-pictures")
-            if reviews_pic is not None:
-                comment.pic_num = self.download_pic_each_comment(reviews_pic, pic_dir, self.comment_num, self.proxy_list)
+            # pic  取消评论图片下载。
+            # reviews_pic = comment_li.find('div', class_="review-pictures")
+            # if reviews_pic is not None:
+            #     comment.pic_num = self.download_pic_each_comment(reviews_pic, pic_dir, self.comment_num, self.proxy_list)
             # time
             time_span = comment_li.find('span', class_="time")
             comment.time = time_span.text.strip()
@@ -553,7 +554,7 @@ class application:
                 os.makedirs(sub_dir_path)
             # 一定数量之后访问一次父页面  # todo 难道还需要再向上一层？  # 暂时弃用
             if idx % 7 == 0:
-                print(f"-- shop status: {idx}/{shop_len} --")
+                print(f"-- shop status: {idx+index}/{shop_len} --")
                 # self.get_html_from_response(get_urls()[int((idx+index)/15)], None, delay_type=False)
             # 启动 shop 主页爬取
             comment_check = self.crawl_shop_info(sub_dir_path, shop)
