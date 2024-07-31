@@ -7,7 +7,6 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 ICON_PATH = os.path.join(script_dir, "LOGO.ico")
 
 def notice(text):
-    print(ICON_PATH)
     toast(text, icon=ICON_PATH)
 
 

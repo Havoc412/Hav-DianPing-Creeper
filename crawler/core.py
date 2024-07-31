@@ -553,7 +553,7 @@ class application:
                 os.makedirs(sub_dir_path)
             # 一定数量之后访问一次父页面  # todo 难道还需要再向上一层？  # 暂时弃用
             if idx % 7 == 0:
-                print(f"-- shop status: {idx}/{shop_len} --")
+                print(f"-- shop status: {idx+index}/{shop_len} --")
                 # self.get_html_from_response(get_urls()[int((idx+index)/15)], None, delay_type=False)
             # 启动 shop 主页爬取
             comment_check = self.crawl_shop_info(sub_dir_path, shop)
