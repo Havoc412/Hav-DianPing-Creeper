@@ -328,6 +328,7 @@ class application:
             return recommend_cuisine
         ul = reviews_div.find('ul')
         comments_li = ul.find_all('li', recursive=False)
+        pic_cnt = 0
 
         for index, comment_li in enumerate(comments_li):
             self.comment_num += 1  # 完整的计数
@@ -343,10 +344,12 @@ class application:
             # words
             words_div = comment_li.find('div', class_="review-words")
             comment.words = words_div.text.strip()
-            # pic  取消评论图片下载。
-            # reviews_pic = comment_li.find('div', class_="review-pictures")
-            # if reviews_pic is not None:
-            #     comment.pic_num = self.download_pic_each_comment(reviews_pic, pic_dir, self.comment_num, self.proxy_list)
+            # pic
+            if pic_num < 10: # 获取一定数目的图片 # todo 不过这个写法，暂时没有考虑恢复的细节。
+                reviews_pic = comment_li.find('div', class_="review-pictures")
+                if reviews_pic is not None:
+                    comment.pic_num = self.download_pic_each_comment(reviews_pic, pic_dir, self.comment_num, self.proxy_list)
+                    pic_cnt += comment.pic_num
             # time
             time_span = comment_li.find('span', class_="time")
             comment.time = time_span.text.strip()

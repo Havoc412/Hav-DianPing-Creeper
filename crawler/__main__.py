@@ -7,7 +7,7 @@ class DaZhongDianPing(application):
         super().__init__(config_file, application)
         self.city_name = self.config["search_city"]["name"]  # 设定目标城市
 
-        self.BACK_TASK = True  # 是否沿用上次的任务记录。
+        self.BACK_TASK = False  # 是否沿用上次的任务记录。
 
 
 def main():
