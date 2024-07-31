@@ -196,7 +196,8 @@ class application:
             logger.info("请在网页上进行身份核实。")
             cookie = input("请输入新的 Cookies:\n")  # 等待用户输入以挂起程序
             logger.info("身份核实完成，程序继续运行。")
-            self.headers['Cookie'] = cookie
+            if len(cookie) > 20:  # 大致判断是否有效
+                self.headers['Cookie'] = cookie
             return False
         return True
 
