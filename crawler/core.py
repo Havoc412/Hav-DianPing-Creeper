@@ -546,7 +546,10 @@ class application:
                 self.mongo.delete_data('comment', query)
                 index += 1
             else:
-                raise Exception("Not found pass_shop_target, recover failed!!")
+                index = 0
+                print("未在当前 spot 中找到此店，从头开始。")
+                logger.info("未在当前 spot 中找到此店，从头开始。")
+                # raise Exception("Not found pass_shop_target, recover failed!!")
         else:
             index = 0
 
