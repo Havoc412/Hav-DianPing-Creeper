@@ -22,7 +22,7 @@ dazhongdianping:
   set_logfile: True # 是否保存log文件
 
   headers:  # 需要更新到header的信息（！）
-    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; s_ViewType=10; aburl=1; fspop=test; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1722331546,1722400081,1722473000,1722505144; HMACCOUNT=882C038ECD1DDD51; qruuid=14eb56c0-b751-480e-8c4c-8c7df2f171c0; dplet=268103bfb1a0dc862ed542ead3533e29; dper=0202a2210e8df73d3d28edbb2517634e25ad2a26d1c6dde602542f201ac6a917cae466cf68ef5e9bdd5b25eca8973cfce4d0bab720a9f1f7d45300000000a821000043ebe54832bd4f4259e454ebd3a61fde3987f34a3a5b8d3e144f09c49d060b19672d28978f4d619e3398370469926969; ll=7fd06e815b796be3df069dec7836c3df; ua=%E6%9E%AB%E5%8F%B6; cy=2; cye=beijing; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1722513758; _lxsdk_s=1910d4e9f4e-e37-b9a-459%7C%7C980
+    Cookie: _lxsdk_cuid=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _lxsdk=18eff59e519c8-0c3ffd3d6f0c77-4c657b58-190140-18eff59e5194a; _hc.v=0c788b88-872e-212f-a41f-9512a0726663.1713681067; WEBDFPID=04v3v0y1x9695w3y05v5yvx71491z31z809yzzyyv6v97958zv5xy9x3-2036478734638-1721118733087EASEUWWfd79fef3d01d5e9aadc18ccd4d0c95071367; ctu=68f0c692cbd16f4a9f4719c3f69bcc86f5355f7ca81eab739906e95c920fe0a0; s_ViewType=10; aburl=1; fspop=test; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1722331546,1722400081,1722473000,1722505144; HMACCOUNT=882C038ECD1DDD51; cy=2; cye=beijing; _lx_utm=utm_source%3Dbing%26utm_medium%3Dorganic; qruuid=d10addd4-f67c-467b-8798-c40a86f61bd6; dplet=960c897d13915c6ebdd49a6cc3cdadad; dper=02022a2103eb98167ba6287fb84d2860357302f70eeabe696fc23f121213af802c7c7c2c799d03fe657ab792720c5f19a6dca5e8e9a39d83252e00000000a8210000a80b21c69185bd824ad2870d63cfab6850b39a5044cf8295230c6e14104b64dea3b9163c26ebd900be70e32734e73ac5; ll=7fd06e815b796be3df069dec7836c3df; ua=Hav; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1722519639; _lxsdk_s=1910e2b3e87-afb-01e-264%7C%7C65
     # 替换成自己的cookie
     Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
     Accept-Encodin: gzip, deflate, br, zstd
@@ -30,9 +30,9 @@ dazhongdianping:
 
   use_proxy: True # 若不使用IP代理，置为False
   proxy: # 可去在右边网站获取 https://cn.proxy-tools.com/proxy/cn; https://www.kuaidaili.com/free
-  - http|218.75.102.198:8000
+  - http|154.203.132.55:8080
   - http|210.61.207.92:3128
-  - http|45.65.113.71:80
+  - http|115.223.11.212:8103
   - http|154.203.132.49:8080
   - http|121.41.84.158:80
   - http|120.26.200.28:80

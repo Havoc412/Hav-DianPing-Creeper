@@ -38,7 +38,7 @@ def main():
         else:
             # 打印完整的错误信息到控制台
             traceback.print_exc()
-            notice(str(e) + "\n且短时间内403，程序暂停。")
+            notice(str(e) + "\n且短时间内意外中止，程序暂停。")
 
 
 
