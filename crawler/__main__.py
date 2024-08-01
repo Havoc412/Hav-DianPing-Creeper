@@ -15,6 +15,12 @@ class DaZhongDianPing(application):
         self.BACK_TASK = True  # 是否沿用上次的任务记录。
 
 
+def restart():
+    print("Restarting the script in 5 minutes...")
+    time.sleep(300)  # Wait for 5 minutes
+    # os.execl(sys.executable, sys.executable, *sys.argv)
+    main()
+
 def main():
     # 爬取评论图片
     print("*****请注意更新Cookie和IP代理！！！*****")
@@ -34,7 +40,8 @@ def main():
 
         if execution_time_minutes > 2:
             notice(str(e) + "\n五分钟后将自动重启...")
-            threading.Timer(5 * 60, main)
+            t = threading.Thread(target=restart)
+            t.start()  # Start the thread to run the restart function
         else:
             # 打印完整的错误信息到控制台
             traceback.print_exc()
