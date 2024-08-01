@@ -15,7 +15,7 @@ class TimerWatch:
         # 如果定时器已经存在，则取消它
         if self.timer is not None:
             self.timer.cancel()
-            print("Timer cancelled.")
+            # print("Timer cancelled.")
 
         # 创建并启动新的定时器
         self.timer = threading.Timer(self.timeout_duration, wait_operation)

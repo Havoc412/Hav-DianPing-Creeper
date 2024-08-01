@@ -345,7 +345,7 @@ class application:
             words_div = comment_li.find('div', class_="review-words")
             comment.words = words_div.text.strip()
             # pic
-            if pic_num < 10: # 获取一定数目的图片 # todo 不过这个写法，暂时没有考虑恢复的细节。
+            if pic_cnt < 10: # 获取一定数目的图片 # todo 不过这个写法，暂时没有考虑恢复的细节。
                 reviews_pic = comment_li.find('div', class_="review-pictures")
                 if reviews_pic is not None:
                     comment.pic_num = self.download_pic_each_comment(reviews_pic, pic_dir, self.comment_num, self.proxy_list)
@@ -537,6 +537,7 @@ class application:
 
         # other operations， 目前看来就是直接联动，启动 shop 的查询。
         if need_pass is True:
+            # print(pass_shop_target, '\n', spot.shop_list)
             if pass_shop_target in spot.shop_list:
                 index = spot.shop_list.index(pass_shop_target)
                 # delete next
@@ -556,8 +557,9 @@ class application:
             if not os.path.exists(sub_dir_path):
                 os.makedirs(sub_dir_path)
             # 一定数量之后访问一次父页面  # todo 难道还需要再向上一层？  # 暂时弃用
-            if idx % 7 == 0:
+            if idx % 4 == 0:
                 print(f"-- shop status: {idx+index}/{shop_len} --")
+                # if idx & 7 == 0:
                 # self.get_html_from_response(get_urls()[int((idx+index)/15)], None, delay_type=False)
             # 启动 shop 主页爬取
             comment_check = self.crawl_shop_info(sub_dir_path, shop)
@@ -732,7 +734,7 @@ class application:
         spot_data = self.mongo.find_last_data('spot')
         spot_target = {
             'spot_id': spot_data['spot_id'],
-            'spot_name': spot_data['spot_name'].replace('-', '/')  # todo remove 下一个城市的时候
+            'spot_name': spot_data['spot_name'] # .replace('-', '/')  # todo remove 下一个城市的时候
         }
         # 获取最后一个 shop
         shop_data = self.mongo.find_last_data('shop')
@@ -741,7 +743,7 @@ class application:
             'shop_name': shop_data['shop_name'],
         }
         # 是当前 spot 的最后一个，所以直接从下一个 spot 开始
-        print("pass info", spot_target, shop_target, city.city_EN)
+        print("pass info", spot_target, shop_target, city.city_EN) # , city.get_spot_list())
         if spot_target in city.get_spot_list():
             index = city.spot_list.index(spot_target)
             # 依靠 last_check 来决定 跳过参数是否有效。
@@ -751,14 +753,13 @@ class application:
                 print("---", spot['spot_id'], spot['spot_name'], "---")
                 logger.info(f"---{spot['spot_id'], spot['spot_name']}---")
                 # todo 临时方案：解决恢复逻辑中 spot 名中的路径符号。 同上。
-                spot['spot_name'] = spot['spot_name'].replace('/', '-')
+                # spot['spot_name'] = spot['spot_name'].replace('/', '-')
                 # 执行后续操作
                 self.crawl_search_food(city.city_EN, dir_path, spot['spot_id'], spot['spot_name'],
                                        need_pass=last_check, pass_shop_target=shop_target,
                                        last_spot_id=spot_target['spot_id'])
                 last_check = False  # 之后就不需要跳过了
         else:
-            print("back find fail ?!")
             raise Exception("back find fail?!")
 
     def crawl(self):
