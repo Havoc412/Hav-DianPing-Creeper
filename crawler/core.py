@@ -18,6 +18,7 @@ from crawler.utils.html import (
     get_shop_info,
 )
 from crawler.utils.timer_watching import TimerWatch
+from crawler.utils.cralwer_proxy import Crawl_proxy
 
 # 存储用数据库基本配置
 from crawler.MongoDB.Mongo import Mongo
@@ -62,7 +63,7 @@ class Crawl:
         request = urllib.request.Request(url=url, data=data, headers=headers, method=method)  # 实际上爬取 html 的操作只是一个 GET 的接口。
         response = self.urlopen(request)
         return response
-    
+
     def urlopen(self, url):
         try:
             response = urllib.request.urlopen(url)
@@ -165,7 +166,9 @@ class application:
         logger.addHandler(hander)
         # proxy
         if self.config["use_proxy"]:
-            self.proxy_list = [_.split("|") for _ in self.config["proxy"]]
+            # self.proxy_list = [_.split("|") for _ in self.config["proxy"]]
+            crawler_porxy = Crawl_proxy()  # 自动爬取 porxy
+            self.proxy_list = crawler_porxy.get_porxy()
         else:
             self.proxy_list = []
         # 可用IP代理过滤
@@ -552,6 +555,10 @@ class application:
                 # raise Exception("Not found pass_shop_target, recover failed!!")
         else:
             index = 0
+
+        if self.pass_current_shop:
+            index += 1
+            self.pass_current_shop = False
 
         shop_len = len(spot.shop_list_class)
         for idx, shop in enumerate(spot.shop_list_class[index:]):  # 直接遍历 Shop 类

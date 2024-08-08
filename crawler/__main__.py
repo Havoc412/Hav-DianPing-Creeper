@@ -14,6 +14,8 @@ class DaZhongDianPing(application):
 
         self.BACK_TASK = True  # 是否沿用上次的任务记录。
 
+        self.pass_current_shop = False
+
 
 def restart():
     print("Restarting the script in 5 minutes...")
