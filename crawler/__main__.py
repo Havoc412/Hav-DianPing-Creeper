@@ -17,9 +17,10 @@ class DaZhongDianPing(application):
         self.pass_current_shop = False
 
 
+
 def restart():
     print("Restarting the script in 5 minutes...")
-    time.sleep(300)  # Wait for 5 minutes
+    time.sleep(300 * cnt403)  # Wait for 5 minutes
     # os.execl(sys.executable, sys.executable, *sys.argv)
     main()
 
@@ -32,6 +33,8 @@ def main():
     dianping = DaZhongDianPing(config_file="config/config.yaml", application="dazhongdianping")
 
     lastTime = datetime.datetime.now()
+    global cnt403
+    cnt403 = 0
 
     try:
         dianping.crawl()
@@ -40,8 +43,9 @@ def main():
         execution_time = endTime - lastTime
         execution_time_minutes = execution_time.total_seconds() / 60
 
+        cnt403 += 1
         if execution_time_minutes > 2:
-            notice(str(e) + "\n五分钟后将自动重启...")
+            notice(str(e) + f"\n{cnt403 * 5} 分钟后将自动重启...")
             t = threading.Thread(target=restart)
             t.start()  # Start the thread to run the restart function
         else:
