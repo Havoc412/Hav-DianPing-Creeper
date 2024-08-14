@@ -16,9 +16,10 @@ class DaZhongDianPing(application):
 
         self.pass_current_shop = False
 
-
+cnt403 = 0
 
 def restart():
+    global cnt403
     print("Restarting the script in 5 minutes...")
     time.sleep(300 * cnt403)  # Wait for 5 minutes
     # os.execl(sys.executable, sys.executable, *sys.argv)
@@ -34,7 +35,6 @@ def main():
 
     lastTime = datetime.datetime.now()
     global cnt403
-    cnt403 = 0
 
     try:
         dianping.crawl()
